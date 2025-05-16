@@ -74,7 +74,8 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         }
       });
     }
-  }, [aiFpSuggestions, form, fpFields]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiFpSuggestions, form]); // fpFields is stable
 
   useEffect(() => {
     if (aiGscSuggestions) {
@@ -153,7 +154,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
 
           <Card>
             <CardHeader>
-              <CardTitle>General System Characteristics (GSCs)</CardTitle>
+              <CardTitle>Value Adjustment Factors (VAF)</CardTitle>
               <CardDescription>Rate each characteristic from 0 (Not Present) to 5 (Strongly Present). AI suggestions may pre-fill these.</CardDescription>
             </CardHeader>
             <CardContent>
