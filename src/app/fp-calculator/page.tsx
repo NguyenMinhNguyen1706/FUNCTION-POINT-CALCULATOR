@@ -42,7 +42,7 @@ export default function FpCalculatorPage() {
       <div className="space-y-6">
         <PageHeader
             title="AI-Powered Document Analyzer"
-            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions for Function Point components (counts and descriptions) and General System Characteristic ratings."
+            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions for Function Point components (counts and descriptions) and Value Adjustment Factors (VAF)."
             icon={FileScan}
         />
         <Card className="shadow-lg">
