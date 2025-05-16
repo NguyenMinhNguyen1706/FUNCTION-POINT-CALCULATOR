@@ -193,7 +193,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         </div>
         
         <div className="flex justify-end space-x-2 mt-6">
-          <Button type="submit">Calculate AFP</Button>
+          <Button type="submit">Calculate FP</Button>
         </div>
       </form>
 
