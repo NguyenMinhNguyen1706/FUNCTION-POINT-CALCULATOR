@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -137,26 +138,21 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                       <span className="sr-only">How FP is Calculated</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>How Function Points are Calculated</DialogTitle>
-                      <DialogDescription>
-                        This application uses a simplified Function Point calculation method.
-                      </DialogDescription>
+                      <DialogTitle>Function Point (FP) Calculation Overview</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3 py-2 text-sm">
-                      <p><strong>1. Unadjusted Function Points (UFP):</strong><br />
-                        UFP = (EI × {SIMPLE_WEIGHTS.ei}) + (EO × {SIMPLE_WEIGHTS.eo}) + (EQ × {SIMPLE_WEIGHTS.eq}) + (ILF × {SIMPLE_WEIGHTS.ilf}) + (EIF × {SIMPLE_WEIGHTS.eif})<br />
-                        <span className="text-xs text-muted-foreground">Where EI, EO, etc., are counts, and the numbers are average complexity weights.</span>
-                      </p>
-                      <p><strong>2. Total Degree of Influence (TDI):</strong><br />
-                        TDI = Sum of all 14 Value Adjustment Factor ratings (0-5 each).
-                      </p>
-                      <p><strong>3. Value Adjustment Factor (VAF):</strong><br />
-                        VAF = 0.65 + (0.01 × TDI)
-                      </p>
-                      <p><strong>4. Adjusted Function Points (AFP):</strong><br />
-                        AFP = UFP × VAF
+                    <div className="py-2">
+                      <Image 
+                        src="https://placehold.co/600x400.png" 
+                        alt="Function Point Calculation Steps" 
+                        width={600} 
+                        height={400} 
+                        className="rounded-md object-contain"
+                        data-ai-hint="function point calculation" 
+                      />
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        This image outlines the general steps for Function Point calculation.
                       </p>
                     </div>
                     <DialogClose asChild>
