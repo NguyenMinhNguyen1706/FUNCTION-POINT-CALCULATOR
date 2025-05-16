@@ -27,10 +27,13 @@ export default function FpCalculatorPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Function Point Analysis</CardTitle>
-          <CardDescription>Enter the counts for each function point type and rate the General System Characteristics. AI suggestions and estimated counts from document analysis will appear below relevant fields and may pre-fill them if a document is analyzed.</CardDescription>
+          <CardDescription>Enter values for FP components and GSCs. If a document is analyzed, AI suggestions for FP counts and GSC ratings may pre-fill relevant fields.</CardDescription>
         </CardHeader>
         <CardContent>
-          <FpCalculatorForm aiSuggestions={aiAnalysisResult?.potentialFunctionPoints} />
+          <FpCalculatorForm 
+            aiFpSuggestions={aiAnalysisResult?.potentialFunctionPoints} 
+            aiGscSuggestions={aiAnalysisResult?.gscRatings}
+          />
         </CardContent>
       </Card>
 
@@ -39,13 +42,13 @@ export default function FpCalculatorPage() {
       <div className="space-y-6">
         <PageHeader
             title="AI-Powered Document Analyzer"
-            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions and estimated counts for Function Point components."
+            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions for Function Point components (counts and descriptions) and General System Characteristic ratings."
             icon={FileScan}
         />
         <Card className="shadow-lg">
             <CardHeader>
-            <CardTitle>Analyze Document for Function Points</CardTitle>
-            <CardDescription>The AI will attempt to identify potential EI, EO, EQ, ILF, and EIF, provide textual descriptions, and estimate their numerical counts. Suggestions will also appear in the form above and may pre-fill relevant fields.</CardDescription>
+            <CardTitle>Analyze Document for Function Points & GSCs</CardTitle>
+            <CardDescription>The AI will attempt to identify FP components, estimate their counts, and suggest ratings for GSCs. Suggestions may pre-fill relevant fields in the form above.</CardDescription>
             </CardHeader>
             <CardContent>
             <FileUploadForm onAnalysisComplete={handleAnalysisComplete} />
@@ -55,3 +58,4 @@ export default function FpCalculatorPage() {
     </div>
   );
 }
+

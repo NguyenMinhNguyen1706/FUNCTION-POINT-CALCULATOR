@@ -39,10 +39,11 @@ const formSchema = fpInputSchema.extend(gscSchemaShape);
 type FormData = z.infer<typeof formSchema>;
 
 interface FpCalculatorFormProps {
-  aiSuggestions?: AnalyzeDocumentOutput['potentialFunctionPoints'] | null;
+  aiFpSuggestions?: AnalyzeDocumentOutput['potentialFunctionPoints'] | null;
+  aiGscSuggestions?: AnalyzeDocumentOutput['gscRatings'] | null;
 }
 
-export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
+export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalculatorFormProps) {
   const [result, setResult] = useState<FPCalculationResult | null>(null);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>('calculationHistory', []);
   const { toast } = useToast();
@@ -55,7 +56,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
     },
   });
 
-  const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiSuggestions']> }[] = [
+  const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiFpSuggestions']> }[] = [
     { name: 'ei', label: 'External Inputs (EI)', aiKey: 'EI' },
     { name: 'eo', label: 'External Outputs (EO)', aiKey: 'EO' },
     { name: 'eq', label: 'External Inquiries (EQ)', aiKey: 'EQ' },
@@ -64,16 +65,28 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
   ];
   
   useEffect(() => {
-    if (aiSuggestions) {
+    if (aiFpSuggestions) {
       setResult(null); // Reset result when new AI suggestions come in
       fpFields.forEach(fieldData => {
-        const suggestion = aiSuggestions[fieldData.aiKey];
+        const suggestion = aiFpSuggestions[fieldData.aiKey];
         if (suggestion && suggestion.count !== undefined && suggestion.count !== null) {
           form.setValue(fieldData.name, suggestion.count, { shouldValidate: true });
         }
       });
     }
-  }, [aiSuggestions, form, fpFields]);
+  }, [aiFpSuggestions, form, fpFields]);
+
+  useEffect(() => {
+    if (aiGscSuggestions) {
+      setResult(null); // Reset result if GSC suggestions also come in (might be part of same analysis)
+      GSC_FACTORS.forEach(factor => {
+        const suggestedRating = aiGscSuggestions[factor.id as GSCFactorId];
+        if (suggestedRating !== undefined && suggestedRating !== null) {
+          form.setValue(factor.id as GSCFactorId, suggestedRating, { shouldValidate: true });
+        }
+      });
+    }
+  }, [aiGscSuggestions, form]);
 
 
   const onSubmit = (data: FormData) => {
@@ -114,7 +127,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
           <Card>
             <CardHeader>
               <CardTitle>Function Point Components</CardTitle>
-              <CardDescription>Enter the counts for each type. These are typically weighted counts (Low, Avg, High). AI suggestions may pre-fill these based on document analysis.</CardDescription>
+              <CardDescription>Enter the counts for each type. AI suggestions may pre-fill these based on document analysis.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {fpFields.map(fieldData => {
@@ -129,7 +142,6 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
                         <FormControl>
                           <Input type="number" placeholder="0" {...formHookField} />
                         </FormControl>
-                        {/* The UiFormDescription block that displayed AI suggestions was here and has been removed */}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -142,7 +154,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
           <Card>
             <CardHeader>
               <CardTitle>General System Characteristics (GSCs)</CardTitle>
-              <CardDescription>Rate each characteristic from 0 (Not Present) to 5 (Strongly Present).</CardDescription>
+              <CardDescription>Rate each characteristic from 0 (Not Present) to 5 (Strongly Present). AI suggestions may pre-fill these.</CardDescription>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[350px] pr-4">
@@ -156,7 +168,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
                       <FormItem>
                         <FormLabel>{factor.name}</FormLabel>
                         <FormControl>
-                          <Select onValueChange={value => formField.onChange(parseInt(value))} defaultValue={String(formField.value)}>
+                          <Select onValueChange={value => formField.onChange(parseInt(value))} value={String(formField.value)} defaultValue={String(formField.value)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select rating (0-5)" />
                             </SelectTrigger>
@@ -228,3 +240,4 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
     </Form>
   );
 }
+

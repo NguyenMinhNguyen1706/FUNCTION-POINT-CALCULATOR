@@ -4,13 +4,14 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
 import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, AnalyzeDocumentOutput } from '@/lib/types';
+import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIconLucide, Save, FileDown } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIcon, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -135,27 +136,29 @@ export function HistoryList() {
       return;
     }
 
-    const headers = [
+    const baseHeaders = [
       'ID', 'Timestamp', 'Type', 'File Name', 
       'KSLOC (COCOMO)', 'EI (FP)', 'EO (FP)', 'EQ (FP)', 'ILF (FP)', 'EIF (FP)',
       'UFP (FP)', 'VAF (FP)', 'AFP Estimated (FP)', 'AFP Actual (FP)',
       'Effort Estimated PM (COCOMO)', 'Dev Time Estimated M (COCOMO)',
       'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
-      'Analysis EI Description', 'Analysis EI Count', 
-      'Analysis EO Description', 'Analysis EO Count',
-      'Analysis EQ Description', 'Analysis EQ Count',
-      'Analysis ILF Description', 'Analysis ILF Count',
-      'Analysis EIF Description', 'Analysis EIF Count'
     ];
+    const fpAnalysisHeaders = GSC_FACTORS.map(gsc => `Analysis GSC ${gsc.id} Rating`);
+    const analysisFpHeaders = ['Analysis EI Desc', 'Analysis EI Count', 'Analysis EO Desc', 'Analysis EO Count', 'Analysis EQ Desc', 'Analysis EQ Count', 'Analysis ILF Desc', 'Analysis ILF Count', 'Analysis EIF Desc', 'Analysis EIF Count'];
 
+    const headers = [...baseHeaders, ...analysisFpHeaders, ...fpAnalysisHeaders];
     const csvRows = [headers.join(',')];
 
     history.forEach(entry => {
-      const row: (string | number | undefined)[] = [
+      const row: (string | number | null | undefined)[] = [
         entry.id,
         format(new Date(entry.timestamp), "yyyy-MM-dd HH:mm:ss"),
         entry.type,
       ];
+
+      const emptyFpAnalysisSlots = Array(analysisFpHeaders.length).fill('');
+      const emptyGscSlots = Array(fpAnalysisHeaders.length).fill('');
+
 
       if (entry.type === 'FP') {
         const fpData = entry.data as FPCalculationResult;
@@ -165,7 +168,8 @@ export function HistoryList() {
           fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
           fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
           '', '', '', '', // COCOMO fields
-          '', '', '', '', '', '', '', '', '', '' // Analysis fields (10 empty strings)
+          ...emptyFpAnalysisSlots, // Analysis FP slots
+          ...emptyGscSlots      // Analysis GSC slots
         );
       } else if (entry.type === 'COCOMO') {
         const cocomoData = entry.data as CocomoCalculationResult;
@@ -176,11 +180,13 @@ export function HistoryList() {
           '', '', '', '', // FP result fields
           cocomoData.effort, cocomoData.devTime,
           cocomoData.actualEffort, cocomoData.actualDevTime,
-          '', '', '', '', '', '', '', '', '', '' // Analysis fields (10 empty strings)
+          ...emptyFpAnalysisSlots, // Analysis FP slots
+          ...emptyGscSlots      // Analysis GSC slots
         );
       } else if (entry.type === 'ANALYSIS') {
         const analysisData = entry.data as { fileName: string; result: AnalyzeDocumentOutput };
         const fp = analysisData.result.potentialFunctionPoints;
+        const gsc = analysisData.result.gscRatings;
         row.push(
           analysisData.fileName,
           '', '', '', '', '', '', // KSLOC & FP input fields
@@ -190,7 +196,8 @@ export function HistoryList() {
           fp.EO.description, fp.EO.count,
           fp.EQ.description, fp.EQ.count,
           fp.ILF.description, fp.ILF.count,
-          fp.EIF.description, fp.EIF.count
+          fp.EIF.description, fp.EIF.count,
+          ...GSC_FACTORS.map(factor => gsc?.[factor.id as GSCFactorId]) // GSC Ratings
         );
       }
       csvRows.push(row.map(escapeCsvCell).join(','));
@@ -222,7 +229,7 @@ export function HistoryList() {
   if (history.length === 0) {
     return (
       <div className="text-center py-10">
-        <HistoryIconLucide className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <p className="text-muted-foreground">No history yet.</p>
         <p className="text-sm text-muted-foreground">Perform some calculations or analyses to see them here.</p>
       </div>
@@ -298,20 +305,45 @@ export function HistoryList() {
   const renderAnalysisDetails = (data: { fileName: string; result: AnalyzeDocumentOutput }) => (
      <div className="space-y-2 text-sm">
       <p><strong>File Name:</strong> {data.fileName}</p>
+      
       <h4 className="font-medium mt-2">Potential Function Points:</h4>
-      <ScrollArea className="h-[150px] p-2 border rounded-md bg-background">
+      <ScrollArea className="h-[150px] p-2 border rounded-md bg-muted/10">
         <div className="space-y-1 text-xs">
           {Object.entries(data.result.potentialFunctionPoints).map(([key, value]) => (
-            <div key={key}>
-              <strong className="text-foreground">{key}:</strong>
-              <p className="pl-2">Description: {value.description || "Not described"}</p>
-              {value.count !== undefined && value.count !== null && (
-                 <p className="pl-2">Est. Count: {value.count}</p>
-              )}
-            </div>
+            value && (
+              <div key={key}>
+                <strong className="text-foreground">{key}:</strong>
+                <p className="pl-2">Description: {value.description || "Not described"}</p>
+                {(value.count !== undefined && value.count !== null) && (
+                   <p className="pl-2">Est. Count: {value.count}</p>
+                )}
+              </div>
+            )
           ))}
         </div>
       </ScrollArea>
+
+      {data.result.gscRatings && Object.keys(data.result.gscRatings).length > 0 && (
+        <>
+          <h4 className="font-medium mt-3">Suggested GSC Ratings:</h4>
+          <ScrollArea className="h-[150px] p-2 border rounded-md bg-muted/10">
+            <div className="space-y-1 text-xs">
+              {GSC_FACTORS.map(gscFactor => {
+                const rating = data.result.gscRatings?.[gscFactor.id as GSCFactorId];
+                if (rating !== undefined && rating !== null) {
+                  return (
+                    <div key={gscFactor.id}>
+                      <strong className="text-foreground">{gscFactor.name}:</strong>
+                      <span className="pl-2">{rating}</span>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </ScrollArea>
+        </>
+      )}
     </div>
   );
 
@@ -402,3 +434,4 @@ export function HistoryList() {
     </div>
   );
 }
+
