@@ -136,7 +136,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
                             <Info className="inline-block h-3.5 w-3.5 mr-1.5 relative -top-px text-accent" />
                             <strong>AI Suggestion:</strong> {suggestionText}
                             {suggestionObject.count !== undefined && suggestionObject.count !== null && (
-                                <span className="block mt-0.5"><strong>Estimated Count:</strong> {suggestionObject.count} (pre-filled)</span>
+                                <span className="block mt-0.5"><strong>Estimated Count:</strong> {suggestionObject.count}</span>
                             )}
                           </UiFormDescription>
                         )}
