@@ -18,7 +18,7 @@ import { FunctionSquare, Calculator, History, TrendingUp, BotMessageSquare } fro
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/fp-calculator', label: 'FP Suite & Analyzer', icon: FunctionSquare },
+  { href: '/fp-calculator', label: 'Function Point Calculator', icon: FunctionSquare },
   { href: '/cocomo-estimator', label: 'COCOMO II', icon: Calculator },
   { href: '/comparison', label: 'Comparison between Function Point (FP) and COCOMO II', icon: TrendingUp },
   { href: '/history', label: 'History', icon: History },
