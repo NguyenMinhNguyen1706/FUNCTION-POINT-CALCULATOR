@@ -14,12 +14,13 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FunctionSquare, Calculator, History, Settings, BotMessageSquare } from 'lucide-react';
+import { FunctionSquare, Calculator, History, TrendingUp, BotMessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/fp-calculator', label: 'FP Suite & Analyzer', icon: FunctionSquare },
   { href: '/cocomo-estimator', label: 'COCOMO II', icon: Calculator },
+  { href: '/comparison', label: 'Trends & Comparison', icon: TrendingUp },
   { href: '/history', label: 'History', icon: History },
 ];
 
