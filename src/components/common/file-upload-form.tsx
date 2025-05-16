@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, type ChangeEvent } from 'react';
@@ -22,6 +23,11 @@ const ACCEPTED_FILE_TYPES = [
   'text/plain',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
 ];
 
 const formSchema = z.object({
@@ -30,7 +36,7 @@ const formSchema = z.object({
     .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
     .refine(
       (files) => ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
-      "Unsupported file format. Please upload PDF, TXT, DOC, or DOCX."
+      "Unsupported file format. Please upload PDF, TXT, DOC, DOCX, JPG, PNG, GIF, WEBP, or SVG."
     ),
 });
 
@@ -126,7 +132,7 @@ export function FileUploadForm() {
           name="file"
           render={({ field }) => ( // `field` is not directly used here due to custom file handling
             <FormItem>
-              <FormLabel htmlFor="file-upload">Upload Document</FormLabel>
+              <FormLabel htmlFor="file-upload">Upload Document or Image</FormLabel>
               <FormControl>
                  <Input 
                     id="file-upload" 
@@ -137,7 +143,7 @@ export function FileUploadForm() {
                   />
               </FormControl>
               <FormDescription>
-                Supported formats: PDF, TXT, DOC, DOCX. Max size: 5MB.
+                Supported formats: PDF, TXT, DOC, DOCX, JPG, PNG, GIF, WEBP, SVG. Max size: 5MB.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -151,7 +157,7 @@ export function FileUploadForm() {
               Analyzing...
             </>
           ) : (
-            "Analyze Document"
+            "Analyze File"
           )}
         </Button>
       </form>
@@ -189,3 +195,4 @@ export function FileUploadForm() {
     </Form>
   );
 }
+
