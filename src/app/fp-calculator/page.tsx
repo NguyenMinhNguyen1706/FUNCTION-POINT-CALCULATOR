@@ -1,5 +1,5 @@
 
-"use client"; // Required for useState
+"use client"; 
 
 import { useState } from 'react';
 import { FunctionSquare, FileScan } from 'lucide-react';
@@ -8,7 +8,7 @@ import { FpCalculatorForm } from '@/components/fp/fp-calculator-form';
 import { FileUploadForm } from '@/components/common/file-upload-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { AnalyzeDocumentOutput } from '@/lib/types';
+import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 
 export default function FpCalculatorPage() {
   const [aiAnalysisResult, setAiAnalysisResult] = useState<AnalyzeDocumentOutput | null>(null);
@@ -27,7 +27,7 @@ export default function FpCalculatorPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Function Point Analysis</CardTitle>
-          <CardDescription>Enter the counts for each function point type and rate the General System Characteristics. AI suggestions from document analysis will appear below relevant fields if a document is analyzed.</CardDescription>
+          <CardDescription>Enter the counts for each function point type and rate the General System Characteristics. AI suggestions and estimated counts from document analysis will appear below relevant fields and may pre-fill them if a document is analyzed.</CardDescription>
         </CardHeader>
         <CardContent>
           <FpCalculatorForm aiSuggestions={aiAnalysisResult?.potentialFunctionPoints} />
@@ -39,13 +39,13 @@ export default function FpCalculatorPage() {
       <div className="space-y-6">
         <PageHeader
             title="AI-Powered Document Analyzer"
-            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions for Function Point components."
+            description="Upload a document (e.g., PDF, DOCX, TXT, JPG, PNG) to analyze its content and get suggestions and estimated counts for Function Point components."
             icon={FileScan}
         />
         <Card className="shadow-lg">
             <CardHeader>
             <CardTitle>Analyze Document for Function Points</CardTitle>
-            <CardDescription>The AI will attempt to identify potential EI, EO, EQ, ILF, and EIF based on the text extracted from your document. Suggestions will also appear in the form above.</CardDescription>
+            <CardDescription>The AI will attempt to identify potential EI, EO, EQ, ILF, and EIF, provide textual descriptions, and estimate their numerical counts. Suggestions will also appear in the form above and may pre-fill relevant fields.</CardDescription>
             </CardHeader>
             <CardContent>
             <FileUploadForm onAnalysisComplete={handleAnalysisComplete} />

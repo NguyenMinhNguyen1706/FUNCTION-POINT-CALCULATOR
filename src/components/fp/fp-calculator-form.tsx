@@ -11,13 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
-import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry, AnalyzeDocumentOutput } from '@/lib/types';
+import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry } from '@/lib/types';
+import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 import { calculateFunctionPoints } from '@/lib/calculations';
 import { FpChart } from './fp-chart';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Aliased FormDescription
+import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
 import { Info } from 'lucide-react';
 
 const fpInputSchema = z.object({
@@ -54,12 +55,26 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
     },
   });
 
-  // Reset result when aiSuggestions change, so user knows they need to recalculate
+  const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiSuggestions']> }[] = [
+    { name: 'ei', label: 'External Inputs (EI)', aiKey: 'EI' },
+    { name: 'eo', label: 'External Outputs (EO)', aiKey: 'EO' },
+    { name: 'eq', label: 'External Inquiries (EQ)', aiKey: 'EQ' },
+    { name: 'ilf', label: 'Internal Logical Files (ILF)', aiKey: 'ILF' },
+    { name: 'eif', label: 'External Interface Files (EIF)', aiKey: 'EIF' },
+  ];
+  
   useEffect(() => {
     if (aiSuggestions) {
-      setResult(null); 
+      setResult(null); // Reset result when new AI suggestions come in
+      fpFields.forEach(fieldData => {
+        const suggestion = aiSuggestions[fieldData.aiKey];
+        if (suggestion && suggestion.count !== undefined && suggestion.count !== null) {
+          form.setValue(fieldData.name, suggestion.count, { shouldValidate: true });
+        }
+      });
     }
-  }, [aiSuggestions]);
+  }, [aiSuggestions, form, fpFields]);
+
 
   const onSubmit = (data: FormData) => {
     const fpInputs: FPInputs = {
@@ -92,14 +107,6 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
     }
   };
 
-  const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiSuggestions']> }[] = [
-    { name: 'ei', label: 'External Inputs (EI)', aiKey: 'EI' },
-    { name: 'eo', label: 'External Outputs (EO)', aiKey: 'EO' },
-    { name: 'eq', label: 'External Inquiries (EQ)', aiKey: 'EQ' },
-    { name: 'ilf', label: 'Internal Logical Files (ILF)', aiKey: 'ILF' },
-    { name: 'eif', label: 'External Interface Files (EIF)', aiKey: 'EIF' },
-  ];
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -107,11 +114,12 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
           <Card>
             <CardHeader>
               <CardTitle>Function Point Components</CardTitle>
-              <CardDescription>Enter the counts for each type. These are typically weighted counts (Low, Avg, High).</CardDescription>
+              <CardDescription>Enter the counts for each type. These are typically weighted counts (Low, Avg, High). AI suggestions may pre-fill these based on document analysis.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {fpFields.map(fieldData => {
-                const suggestionText = aiSuggestions && fieldData.aiKey && aiSuggestions[fieldData.aiKey];
+                const suggestionObject = aiSuggestions && aiSuggestions[fieldData.aiKey];
+                const suggestionText = suggestionObject?.description;
                 return (
                   <FormField
                     key={fieldData.name}
@@ -127,6 +135,9 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
                           <UiFormDescription className="text-xs text-accent-foreground/90 italic mt-1.5 bg-accent/10 p-2 rounded-md border border-accent/20">
                             <Info className="inline-block h-3.5 w-3.5 mr-1.5 relative -top-px text-accent" />
                             <strong>AI Suggestion:</strong> {suggestionText}
+                            {suggestionObject.count !== undefined && suggestionObject.count !== null && (
+                                <span className="block mt-0.5"><strong>Estimated Count:</strong> {suggestionObject.count} (pre-filled)</span>
+                            )}
                           </UiFormDescription>
                         )}
                         <FormMessage />

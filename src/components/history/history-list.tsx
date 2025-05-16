@@ -3,7 +3,7 @@
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
-import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, FileAnalysisResult, AnalyzeDocumentOutput } from '@/lib/types';
+import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, AnalyzeDocumentOutput } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -123,8 +123,6 @@ export function HistoryList() {
       return '';
     }
     const stringData = String(cellData);
-    // If the string contains a comma, double quote, or newline, enclose it in double quotes
-    // and escape existing double quotes by doubling them.
     if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
       return `"${stringData.replace(/"/g, '""')}"`;
     }
@@ -143,8 +141,11 @@ export function HistoryList() {
       'UFP (FP)', 'VAF (FP)', 'AFP Estimated (FP)', 'AFP Actual (FP)',
       'Effort Estimated PM (COCOMO)', 'Dev Time Estimated M (COCOMO)',
       'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
-      'Analysis EI Suggestion', 'Analysis EO Suggestion', 'Analysis EQ Suggestion', 
-      'Analysis ILF Suggestion', 'Analysis EIF Suggestion'
+      'Analysis EI Description', 'Analysis EI Count', 
+      'Analysis EO Description', 'Analysis EO Count',
+      'Analysis EQ Description', 'Analysis EQ Count',
+      'Analysis ILF Description', 'Analysis ILF Count',
+      'Analysis EIF Description', 'Analysis EIF Count'
     ];
 
     const csvRows = [headers.join(',')];
@@ -164,7 +165,7 @@ export function HistoryList() {
           fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
           fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
           '', '', '', '', // COCOMO fields
-          '', '', '', '', '' // Analysis fields
+          '', '', '', '', '', '', '', '', '', '' // Analysis fields (10 empty strings)
         );
       } else if (entry.type === 'COCOMO') {
         const cocomoData = entry.data as CocomoCalculationResult;
@@ -175,20 +176,21 @@ export function HistoryList() {
           '', '', '', '', // FP result fields
           cocomoData.effort, cocomoData.devTime,
           cocomoData.actualEffort, cocomoData.actualDevTime,
-          '', '', '', '', '' // Analysis fields
+          '', '', '', '', '', '', '', '', '', '' // Analysis fields (10 empty strings)
         );
       } else if (entry.type === 'ANALYSIS') {
         const analysisData = entry.data as { fileName: string; result: AnalyzeDocumentOutput };
+        const fp = analysisData.result.potentialFunctionPoints;
         row.push(
           analysisData.fileName,
           '', '', '', '', '', '', // KSLOC & FP input fields
           '', '', '', '', // FP result fields
           '', '', '', '', // COCOMO fields
-          analysisData.result.potentialFunctionPoints.EI,
-          analysisData.result.potentialFunctionPoints.EO,
-          analysisData.result.potentialFunctionPoints.EQ,
-          analysisData.result.potentialFunctionPoints.ILF,
-          analysisData.result.potentialFunctionPoints.EIF
+          fp.EI.description, fp.EI.count,
+          fp.EO.description, fp.EO.count,
+          fp.EQ.description, fp.EQ.count,
+          fp.ILF.description, fp.ILF.count,
+          fp.EIF.description, fp.EIF.count
         );
       }
       csvRows.push(row.map(escapeCsvCell).join(','));
@@ -298,11 +300,17 @@ export function HistoryList() {
       <p><strong>File Name:</strong> {data.fileName}</p>
       <h4 className="font-medium mt-2">Potential Function Points:</h4>
       <ScrollArea className="h-[150px] p-2 border rounded-md bg-background">
-        <ul className="list-disc list-inside pl-2 text-xs">
+        <div className="space-y-1 text-xs">
           {Object.entries(data.result.potentialFunctionPoints).map(([key, value]) => (
-            <li key={key}><strong>{key}:</strong> {value || "Not identified"}</li>
+            <div key={key}>
+              <strong className="text-foreground">{key}:</strong>
+              <p className="pl-2">Description: {value.description || "Not described"}</p>
+              {value.count !== undefined && value.count !== null && (
+                 <p className="pl-2">Est. Count: {value.count}</p>
+              )}
+            </div>
           ))}
-        </ul>
+        </div>
       </ScrollArea>
     </div>
   );
@@ -333,7 +341,7 @@ export function HistoryList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <ScrollArea className="h-[calc(100vh-20rem)] pr-3"> {/* Adjusted height slightly */}
+      <ScrollArea className="h-[calc(100vh-20rem)] pr-3">
         <Accordion type="multiple" className="w-full">
           {history.sort((a,b) => b.timestamp - a.timestamp).map(entry => { 
             const ItemIcon = IconMap[entry.type];
@@ -351,7 +359,7 @@ export function HistoryList() {
                        </span>
                     </div>
                      <Button
-                        asChild // Important: Allows AlertDialogTrigger to behave like a button
+                        asChild
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"

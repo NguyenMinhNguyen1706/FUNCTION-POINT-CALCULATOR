@@ -10,11 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Terminal } from 'lucide-react';
-import { analyzeDocument } from '@/ai/flows/analyze-document-for-function-points';
-import type { AnalyzeDocumentOutput, HistoryEntry } from '@/lib/types';
+import { analyzeDocument, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
+import type { HistoryEntry } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
@@ -89,7 +89,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
           if (onAnalysisComplete) {
             onAnalysisComplete(result);
           }
-          toast({ title: "Analysis Complete", description: "Document analysis finished successfully." });
+          toast({ title: "Analysis Complete", description: "Document analysis finished successfully. Suggestions and estimated counts are now available." });
         } catch (aiError: any) {
           console.error("AI Analysis Error:", aiError);
           setError(`AI analysis failed: ${aiError.message || 'Unknown error'}`);
@@ -99,7 +99,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
         }
       };
       reader.onerror = (error) => {
-        console.error("File Read Error:", error);
+        console.error("File ReadError:", error);
         setError("Failed to read the file.");
         toast({ variant: "destructive", title: "File Read Error", description: "Could not read the selected file." });
         setIsLoading(false);
@@ -120,7 +120,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
         timestamp: Date.now(),
         data: {
           fileName: fileName,
-          result: analysisResult // Storing the full AnalyzeDocumentOutput
+          result: analysisResult
         },
       };
       setHistory([newEntry, ...history]);
@@ -147,9 +147,9 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                     className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                   />
               </FormControl>
-              <FormDescription>
+              <UiFormDescription>
                 Supported formats: PDF, TXT, DOC, DOCX, JPG, PNG, GIF, WEBP, SVG. Max size: 5MB.
-              </FormDescription>
+              </UiFormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -180,15 +180,22 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
           <CardHeader>
             <CardTitle>Analysis Results for: <span className="text-primary">{fileName}</span></CardTitle>
             <CardDescription>
-              The following are potential Function Point components identified by the AI.
-              These suggestions can guide your input in the form above.
+              The AI has identified potential Function Point components and estimated their counts.
+              These suggestions can guide your input in the form above and some fields may have been pre-filled.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {Object.entries(analysisResult.potentialFunctionPoints).map(([key, value]) => (
               <div key={key}>
                 <h4 className="font-semibold text-lg text-foreground">{key}:</h4>
-                <p className="text-muted-foreground whitespace-pre-wrap">{value || "Not identified"}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <span className="font-medium">Description:</span> {value.description || "Not described"}
+                </p>
+                {value.count !== undefined && value.count !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Estimated Count:</span> {value.count}
+                  </p>
+                )}
               </div>
             ))}
           </CardContent>
