@@ -1,3 +1,4 @@
+
 import type { FPInputs, GSCInputs, FPCalculationResult, CocomoInputs, CocomoCalculationResult } from './types';
 import { GSC_FACTORS, COCOMO_A, COCOMO_BASE_EXPONENT } from './constants';
 
@@ -90,3 +91,44 @@ export function calculateCocomoII(inputs: CocomoInputs): CocomoCalculationResult
     inputs,
   };
 }
+
+interface AccuracyDataPoint {
+  estimated: number;
+  actual: number;
+}
+
+export function calculateMAE(data: AccuracyDataPoint[]): number | null {
+  if (data.length === 0) return null;
+  const sumAbsoluteErrors = data.reduce((sum, point) => sum + Math.abs(point.actual - point.estimated), 0);
+  return parseFloat((sumAbsoluteErrors / data.length).toFixed(2));
+}
+
+export function calculateRMSE(data: AccuracyDataPoint[]): number | null {
+  if (data.length === 0) return null;
+  const sumSquaredErrors = data.reduce((sum, point) => sum + Math.pow(point.actual - point.estimated, 2), 0);
+  return parseFloat(Math.sqrt(sumSquaredErrors / data.length).toFixed(2));
+}
+
+export function calculateR2Score(data: AccuracyDataPoint[]): number | null {
+  if (data.length < 2) return null; // R² is typically not meaningful for less than 2 points
+
+  const n = data.length;
+  const sumActual = data.reduce((sum, point) => sum + point.actual, 0);
+  const meanActual = sumActual / n;
+
+  const ssRes = data.reduce((sum, point) => sum + Math.pow(point.actual - point.estimated, 2), 0);
+  const ssTot = data.reduce((sum, point) => sum + Math.pow(point.actual - meanActual, 2), 0);
+
+  if (ssTot === 0) {
+    // If all actual values are the same, R² is undefined.
+    // If predicted also matches actual perfectly (ssRes = 0), R² could be 1.
+    // Otherwise, it implies a poor fit if ssRes > 0.
+    // For simplicity, return null or handle as per specific requirements.
+    // Here, if ssRes is also 0, it's a perfect fit.
+    return ssRes === 0 ? 1.00 : null; 
+  }
+
+  const r2 = 1 - (ssRes / ssTot);
+  return parseFloat(r2.toFixed(2));
+}
+
