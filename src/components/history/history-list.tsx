@@ -3,14 +3,14 @@
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
-import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, FileAnalysisResult } from '@/lib/types';
+import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, FileAnalysisResult, AnalyzeDocumentOutput } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIconLucide, Save } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIconLucide, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -47,7 +47,6 @@ export function HistoryList() {
 
   useEffect(() => {
     setIsClient(true);
-    // Initialize actualsInput state from history
     const initialActuals: ActualsInputState = {};
     history.forEach(entry => {
       if (entry.type === 'FP' && entry.data.actualAfp !== undefined) {
@@ -62,7 +61,7 @@ export function HistoryList() {
       }
     });
     setActualsInput(initialActuals);
-  }, [history]); // Rerun if history changes to re-initialize
+  }, [history]);
 
   const handleActualInputChange = (entryId: string, field: keyof ActualsInputState[string], value: string) => {
     setActualsInput(prev => ({
@@ -118,6 +117,101 @@ export function HistoryList() {
     });
     toast({ title: "Entry Deleted", description: "The selected entry has been removed." });
   };
+
+  const escapeCsvCell = (cellData: any): string => {
+    if (cellData === null || cellData === undefined) {
+      return '';
+    }
+    const stringData = String(cellData);
+    // If the string contains a comma, double quote, or newline, enclose it in double quotes
+    // and escape existing double quotes by doubling them.
+    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
+      return `"${stringData.replace(/"/g, '""')}"`;
+    }
+    return stringData;
+  };
+  
+  const handleExportToCSV = () => {
+    if (history.length === 0) {
+      toast({ title: "No History", description: "There is no data to export.", variant: "destructive" });
+      return;
+    }
+
+    const headers = [
+      'ID', 'Timestamp', 'Type', 'File Name', 
+      'KSLOC (COCOMO)', 'EI (FP)', 'EO (FP)', 'EQ (FP)', 'ILF (FP)', 'EIF (FP)',
+      'UFP (FP)', 'VAF (FP)', 'AFP Estimated (FP)', 'AFP Actual (FP)',
+      'Effort Estimated PM (COCOMO)', 'Dev Time Estimated M (COCOMO)',
+      'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
+      'Analysis EI Suggestion', 'Analysis EO Suggestion', 'Analysis EQ Suggestion', 
+      'Analysis ILF Suggestion', 'Analysis EIF Suggestion'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    history.forEach(entry => {
+      const row: (string | number | undefined)[] = [
+        entry.id,
+        format(new Date(entry.timestamp), "yyyy-MM-dd HH:mm:ss"),
+        entry.type,
+      ];
+
+      if (entry.type === 'FP') {
+        const fpData = entry.data as FPCalculationResult;
+        row.push(
+          '', // File Name
+          '', // KSLOC
+          fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
+          fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
+          '', '', '', '', // COCOMO fields
+          '', '', '', '', '' // Analysis fields
+        );
+      } else if (entry.type === 'COCOMO') {
+        const cocomoData = entry.data as CocomoCalculationResult;
+        row.push(
+          '', // File Name
+          cocomoData.inputs.ksloc,
+          '', '', '', '', '', // FP input fields
+          '', '', '', '', // FP result fields
+          cocomoData.effort, cocomoData.devTime,
+          cocomoData.actualEffort, cocomoData.actualDevTime,
+          '', '', '', '', '' // Analysis fields
+        );
+      } else if (entry.type === 'ANALYSIS') {
+        const analysisData = entry.data as { fileName: string; result: AnalyzeDocumentOutput };
+        row.push(
+          analysisData.fileName,
+          '', '', '', '', '', '', // KSLOC & FP input fields
+          '', '', '', '', // FP result fields
+          '', '', '', '', // COCOMO fields
+          analysisData.result.potentialFunctionPoints.EI,
+          analysisData.result.potentialFunctionPoints.EO,
+          analysisData.result.potentialFunctionPoints.EQ,
+          analysisData.result.potentialFunctionPoints.ILF,
+          analysisData.result.potentialFunctionPoints.EIF
+        );
+      }
+      csvRows.push(row.map(escapeCsvCell).join(','));
+    });
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `fp_cocomo_history_${format(new Date(), "yyyyMMddHHmmss")}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: "Export Successful", description: "History has been exported to CSV." });
+    } else {
+      toast({ title: "Export Failed", description: "Your browser does not support this feature.", variant: "destructive" });
+    }
+  };
+
 
   if (!isClient) {
     return <p>Loading history...</p>;
@@ -199,21 +293,26 @@ export function HistoryList() {
     </div>
   );
 
-  const renderAnalysisDetails = (data: { fileName: string; result: FileAnalysisResult }) => (
+  const renderAnalysisDetails = (data: { fileName: string; result: AnalyzeDocumentOutput }) => (
      <div className="space-y-2 text-sm">
       <p><strong>File Name:</strong> {data.fileName}</p>
       <h4 className="font-medium mt-2">Potential Function Points:</h4>
-      <ul className="list-disc list-inside pl-2">
-        {Object.entries(data.result.potentialFunctionPoints).map(([key, value]) => (
-          <li key={key}><strong>{key}:</strong> {String(value).substring(0,150)}{String(value).length > 150 ? '...' : ''}</li>
-        ))}
-      </ul>
+      <ScrollArea className="h-[150px] p-2 border rounded-md bg-background">
+        <ul className="list-disc list-inside pl-2 text-xs">
+          {Object.entries(data.result.potentialFunctionPoints).map(([key, value]) => (
+            <li key={key}><strong>{key}:</strong> {value || "Not identified"}</li>
+          ))}
+        </ul>
+      </ScrollArea>
     </div>
   );
 
   return (
     <div className="space-y-4">
-       <div className="flex justify-end">
+       <div className="flex justify-between items-center">
+        <Button variant="outline" size="sm" onClick={handleExportToCSV} disabled={history.length === 0}>
+          <FileDown className="mr-2 h-4 w-4" /> Export to CSV
+        </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" size="sm" disabled={history.length === 0}>
@@ -234,9 +333,9 @@ export function HistoryList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <ScrollArea className="h-[calc(100vh-18rem)] pr-3"> {/* Adjusted height */}
+      <ScrollArea className="h-[calc(100vh-20rem)] pr-3"> {/* Adjusted height slightly */}
         <Accordion type="multiple" className="w-full">
-          {history.sort((a,b) => b.timestamp - a.timestamp).map(entry => { // Sort by newest first
+          {history.sort((a,b) => b.timestamp - a.timestamp).map(entry => { 
             const ItemIcon = IconMap[entry.type];
             return (
               <AccordionItem value={entry.id} key={entry.id} className="border-b">
@@ -244,24 +343,25 @@ export function HistoryList() {
                   <div className="flex items-center justify-between w-full pr-2">
                     <div className="flex items-center gap-3">
                        <ItemIcon className="h-5 w-5 text-primary" />
-                       <span className="font-medium">
+                       <span className="font-medium text-sm sm:text-base truncate max-w-[200px] sm:max-w-xs md:max-w-md">
                         {entry.type === 'ANALYSIS' ? `Analysis: ${entry.data.fileName}` : `${entry.type} Calculation`}
                        </span>
-                       <span className="text-xs text-muted-foreground">
+                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                          {format(new Date(entry.timestamp), "PPp")}
                        </span>
                     </div>
                      <Button
-                        asChild
+                        asChild // Important: Allows AlertDialogTrigger to behave like a button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); }} // Stop propagation to prevent accordion toggle
+                        className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); }} 
                         aria-label="Delete entry"
                       >
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                             <div className="p-1.5 inline-block cursor-pointer"> {/* Ensure div takes button style for hover */}
+                             <div className="p-1.5 inline-block cursor-pointer rounded-md" role="button" tabIndex={0} 
+                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') (e.currentTarget as HTMLDivElement).click(); }} >
                                 <Trash2 className="h-4 w-4" />
                              </div>
                           </AlertDialogTrigger>
@@ -284,7 +384,7 @@ export function HistoryList() {
                 <AccordionContent className="p-4 bg-muted/50 rounded-md">
                   {entry.type === 'FP' && renderFPDetails(entry as HistoryEntry & { type: 'FP'; data: FPCalculationResult })}
                   {entry.type === 'COCOMO' && renderCocomoDetails(entry as HistoryEntry & { type: 'COCOMO'; data: CocomoCalculationResult })}
-                  {entry.type === 'ANALYSIS' && renderAnalysisDetails(entry.data as { fileName: string; result: FileAnalysisResult })}
+                  {entry.type === 'ANALYSIS' && renderAnalysisDetails(entry.data as { fileName: string; result: AnalyzeDocumentOutput })}
                 </AccordionContent>
               </AccordionItem>
             )
@@ -294,4 +394,3 @@ export function HistoryList() {
     </div>
   );
 }
-
