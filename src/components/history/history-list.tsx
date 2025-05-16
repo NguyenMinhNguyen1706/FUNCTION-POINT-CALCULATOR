@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -55,7 +56,7 @@ export function HistoryList() {
   if (history.length === 0) {
     return (
       <div className="text-center py-10">
-        <History className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <p className="text-muted-foreground">No history yet.</p>
         <p className="text-sm text-muted-foreground">Perform some calculations or analyses to see them here.</p>
       </div>
