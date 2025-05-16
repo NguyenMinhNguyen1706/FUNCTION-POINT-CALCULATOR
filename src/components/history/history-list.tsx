@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIcon } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIconLucide } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -56,7 +56,7 @@ export function HistoryList() {
   if (history.length === 0) {
     return (
       <div className="text-center py-10">
-        <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <HistoryIconLucide className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <p className="text-muted-foreground">No history yet.</p>
         <p className="text-sm text-muted-foreground">Perform some calculations or analyses to see them here.</p>
       </div>
@@ -138,20 +138,23 @@ export function HistoryList() {
                        </span>
                     </div>
                      <Button 
+                        asChild // Add this prop
                         variant="ghost" 
                         size="icon" 
                         className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
                         onClick={(e) => { e.stopPropagation(); handleDeleteEntry(entry.id); }}
                         aria-label="Delete entry"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <div> {/* Wrap icon in a non-button element */}
+                          <Trash2 className="h-4 w-4" />
+                        </div>
                       </Button>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 bg-muted/30 rounded-md">
-                  {entry.type === 'FP' && renderFPDetails(entry.data)}
-                  {entry.type === 'COCOMO' && renderCocomoDetails(entry.data)}
-                  {entry.type === 'ANALYSIS' && renderAnalysisDetails(entry.data)}
+                  {entry.type === 'FP' && renderFPDetails(entry.data as FPCalculationResult)}
+                  {entry.type === 'COCOMO' && renderCocomoDetails(entry.data as CocomoCalculationResult)}
+                  {entry.type === 'ANALYSIS' && renderAnalysisDetails(entry.data as { fileName: string; result: FileAnalysisResult })}
                 </AccordionContent>
               </AccordionItem>
             )
@@ -161,3 +164,4 @@ export function HistoryList() {
     </div>
   );
 }
+
