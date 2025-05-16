@@ -32,7 +32,7 @@ export function AppSidebarNav() {
       <SidebarHeader className="p-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <BotMessageSquare className="h-7 w-7 text-primary" />
-          <h1 className="text-lg font-semibold group-data-[collapsible=icon]:hidden">FP Suite</h1>
+          <h1 className="text-lg font-semibold group-data-[collapsible=icon]:hidden">Function Point Calculator</h1>
         </Link>
         <div className="md:hidden">
           <SidebarTrigger />
