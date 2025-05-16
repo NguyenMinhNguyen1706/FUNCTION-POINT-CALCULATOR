@@ -10,7 +10,7 @@ export default function FpCalculatorPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Function Point Suite"
+        title="Function Point Calculator"
         description="Calculate Adjusted Function Points (AFP) and analyze documents for potential Function Point components."
         icon={FunctionSquare}
       />
@@ -45,3 +45,4 @@ export default function FpCalculatorPage() {
     </div>
   );
 }
+
