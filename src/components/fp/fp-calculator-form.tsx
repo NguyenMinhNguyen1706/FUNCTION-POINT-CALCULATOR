@@ -1,23 +1,24 @@
+
 "use client";
 
-import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
-import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry } from '@/lib/types';
+import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry, AnalyzeDocumentOutput } from '@/lib/types';
 import { calculateFunctionPoints } from '@/lib/calculations';
 import { FpChart } from './fp-chart';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Aliased FormDescription
+import { Info } from 'lucide-react';
 
 const fpInputSchema = z.object({
   ei: z.coerce.number().min(0, "Must be non-negative").default(0),
@@ -36,7 +37,11 @@ const formSchema = fpInputSchema.extend(gscSchemaShape);
 
 type FormData = z.infer<typeof formSchema>;
 
-export function FpCalculatorForm() {
+interface FpCalculatorFormProps {
+  aiSuggestions?: AnalyzeDocumentOutput['potentialFunctionPoints'] | null;
+}
+
+export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
   const [result, setResult] = useState<FPCalculationResult | null>(null);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>('calculationHistory', []);
   const { toast } = useToast();
@@ -48,6 +53,13 @@ export function FpCalculatorForm() {
       ...GSC_FACTORS.reduce((acc, factor) => ({ ...acc, [factor.id]: 0 }), {}),
     },
   });
+
+  // Reset result when aiSuggestions change, so user knows they need to recalculate
+  useEffect(() => {
+    if (aiSuggestions) {
+      setResult(null); 
+    }
+  }, [aiSuggestions]);
 
   const onSubmit = (data: FormData) => {
     const fpInputs: FPInputs = {
@@ -80,12 +92,12 @@ export function FpCalculatorForm() {
     }
   };
 
-  const fpFields: { name: keyof FPInputs; label: string }[] = [
-    { name: 'ei', label: 'External Inputs (EI)' },
-    { name: 'eo', label: 'External Outputs (EO)' },
-    { name: 'eq', label: 'External Inquiries (EQ)' },
-    { name: 'ilf', label: 'Internal Logical Files (ILF)' },
-    { name: 'eif', label: 'External Interface Files (EIF)' },
+  const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiSuggestions']> }[] = [
+    { name: 'ei', label: 'External Inputs (EI)', aiKey: 'EI' },
+    { name: 'eo', label: 'External Outputs (EO)', aiKey: 'EO' },
+    { name: 'eq', label: 'External Inquiries (EQ)', aiKey: 'EQ' },
+    { name: 'ilf', label: 'Internal Logical Files (ILF)', aiKey: 'ILF' },
+    { name: 'eif', label: 'External Interface Files (EIF)', aiKey: 'EIF' },
   ];
 
   return (
@@ -98,22 +110,31 @@ export function FpCalculatorForm() {
               <CardDescription>Enter the counts for each type. These are typically weighted counts (Low, Avg, High).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fpFields.map(field => (
-                <FormField
-                  key={field.name}
-                  control={form.control}
-                  name={field.name}
-                  render={({ field: formField }) => (
-                    <FormItem>
-                      <FormLabel>{field.label}</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0" {...formField} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ))}
+              {fpFields.map(fieldData => {
+                const suggestionText = aiSuggestions && fieldData.aiKey && aiSuggestions[fieldData.aiKey];
+                return (
+                  <FormField
+                    key={fieldData.name}
+                    control={form.control}
+                    name={fieldData.name}
+                    render={({ field: formHookField }) => (
+                      <FormItem>
+                        <FormLabel>{fieldData.label}</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0" {...formHookField} />
+                        </FormControl>
+                        {suggestionText && (
+                          <UiFormDescription className="text-xs text-accent-foreground/90 italic mt-1.5 bg-accent/10 p-2 rounded-md border border-accent/20">
+                            <Info className="inline-block h-3.5 w-3.5 mr-1.5 relative -top-px text-accent" />
+                            <strong>AI Suggestion:</strong> {suggestionText}
+                          </UiFormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                );
+              })}
             </CardContent>
           </Card>
 
@@ -145,7 +166,7 @@ export function FpCalculatorForm() {
                             </SelectContent>
                           </Select>
                         </FormControl>
-                        <FormDescription className="text-xs">{factor.description}</FormDescription>
+                        <UiFormDescription className="text-xs">{factor.description}</UiFormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

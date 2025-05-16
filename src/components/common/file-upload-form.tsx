@@ -7,12 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Terminal } from 'lucide-react';
 import { analyzeDocument } from '@/ai/flows/analyze-document-for-function-points';
-import type { AnalyzeDocumentOutput, HistoryEntry, FileAnalysisResult } from '@/lib/types';
+import type { AnalyzeDocumentOutput, HistoryEntry } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -42,8 +41,12 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function FileUploadForm() {
-  const [analysisResult, setAnalysisResult] = useState<FileAnalysisResult | null>(null);
+interface FileUploadFormProps {
+  onAnalysisComplete?: (result: AnalyzeDocumentOutput) => void;
+}
+
+export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeDocumentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -59,7 +62,6 @@ export function FileUploadForm() {
     const files = event.target.files;
     if (files && files.length > 0) {
       setFileName(files[0].name);
-      // Trigger validation for the file input
       form.setValue('file', files, { shouldValidate: true });
     } else {
       setFileName(null);
@@ -84,6 +86,9 @@ export function FileUploadForm() {
         try {
           const result = await analyzeDocument({ documentDataUri });
           setAnalysisResult(result);
+          if (onAnalysisComplete) {
+            onAnalysisComplete(result);
+          }
           toast({ title: "Analysis Complete", description: "Document analysis finished successfully." });
         } catch (aiError: any) {
           console.error("AI Analysis Error:", aiError);
@@ -115,7 +120,7 @@ export function FileUploadForm() {
         timestamp: Date.now(),
         data: {
           fileName: fileName,
-          result: analysisResult
+          result: analysisResult // Storing the full AnalyzeDocumentOutput
         },
       };
       setHistory([newEntry, ...history]);
@@ -130,7 +135,7 @@ export function FileUploadForm() {
         <FormField
           control={form.control}
           name="file"
-          render={({ field }) => ( // `field` is not directly used here due to custom file handling
+          render={({ field }) => ( 
             <FormItem>
               <FormLabel htmlFor="file-upload">Upload Document or Image</FormLabel>
               <FormControl>
@@ -176,7 +181,7 @@ export function FileUploadForm() {
             <CardTitle>Analysis Results for: <span className="text-primary">{fileName}</span></CardTitle>
             <CardDescription>
               The following are potential Function Point components identified by the AI.
-              These are suggestions and should be reviewed by an expert.
+              These suggestions can guide your input in the form above.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -195,4 +200,3 @@ export function FileUploadForm() {
     </Form>
   );
 }
-
