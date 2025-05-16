@@ -14,7 +14,7 @@ import { analyzeDocument } from '@/ai/flows/analyze-document-for-function-points
 import type { AnalyzeDocumentOutput, HistoryEntry, FileAnalysisResult } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
