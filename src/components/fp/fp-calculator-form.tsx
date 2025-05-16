@@ -118,8 +118,6 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {fpFields.map(fieldData => {
-                const suggestionObject = aiSuggestions && aiSuggestions[fieldData.aiKey];
-                const suggestionText = suggestionObject?.description;
                 return (
                   <FormField
                     key={fieldData.name}
@@ -131,15 +129,7 @@ export function FpCalculatorForm({ aiSuggestions }: FpCalculatorFormProps) {
                         <FormControl>
                           <Input type="number" placeholder="0" {...formHookField} />
                         </FormControl>
-                        {suggestionText && (
-                          <UiFormDescription className="text-xs text-accent-foreground/90 italic mt-1.5 bg-accent/10 p-2 rounded-md border border-accent/20">
-                            <Info className="inline-block h-3.5 w-3.5 mr-1.5 relative -top-px text-accent" />
-                            <strong>AI Suggestion:</strong> {suggestionText}
-                            {suggestionObject.count !== undefined && suggestionObject.count !== null && (
-                                <span className="block mt-0.5"><strong>Estimated Count:</strong> {suggestionObject.count}</span>
-                            )}
-                          </UiFormDescription>
-                        )}
+                        {/* The UiFormDescription block that displayed AI suggestions was here and has been removed */}
                         <FormMessage />
                       </FormItem>
                     )}
