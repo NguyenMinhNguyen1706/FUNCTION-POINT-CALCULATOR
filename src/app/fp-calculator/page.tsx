@@ -11,7 +11,7 @@ export default function FpCalculatorPage() {
     <div className="space-y-6">
       <PageHeader
         title="Function Point Calculator"
-        description="Calculate Adjusted Function Points (AFP) and analyze documents for potential Function Point components."
+        description="Enter the Function Point components and the Value Adjustment Factors (VAF), or upload a document for analysis to calculate the Function Point (FP)."
         icon={FunctionSquare}
       />
       <Card className="shadow-lg">
