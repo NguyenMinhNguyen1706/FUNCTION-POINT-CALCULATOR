@@ -1,3 +1,4 @@
+
 export const GSC_FACTORS = [
   { id: 'dataCommunications', name: 'Data Communications', description: 'The data and control information used in the application are sent or received over communication facilities.' },
   { id: 'distributedDataProcessing', name: 'Distributed Data Processing', description: 'Distributed data or processing functions are a characteristic of the application.' },
@@ -35,6 +36,16 @@ export const FP_COMPLEXITY_WEIGHTS = {
   EIF: { low: 5, average: 7, high: 10 },
 };
 
+// Average weights for simplified UFP calculation, used in the help dialog and calculations.ts
+export const SIMPLE_WEIGHTS = {
+  ei: 4, // Average EI
+  eo: 5, // Average EO
+  eq: 4, // Average EQ
+  ilf: 10, // Average ILF
+  eif: 7,  // Average EIF
+};
+
+
 // Basic COCOMO II constants (Post-Architecture model)
 // Effort = A * Size^B * Product_of_EMs
 // Size is KSLOC
@@ -45,3 +56,4 @@ export const FP_COMPLEXITY_WEIGHTS = {
 // This is a simplification. Full COCOMO II is more complex.
 export const COCOMO_A = 2.94;
 export const COCOMO_BASE_EXPONENT = 0.91;
+

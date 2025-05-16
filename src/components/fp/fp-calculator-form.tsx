@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { GSC_FACTORS, GSCFactorId, SIMPLE_WEIGHTS } from '@/lib/constants';
 import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry } from '@/lib/types';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 import { calculateFunctionPoints } from '@/lib/calculations';
@@ -19,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
-import { Info } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
 const fpInputSchema = z.object({
   ei: z.coerce.number().min(0, "Must be non-negative").default(0),
@@ -75,11 +76,11 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiFpSuggestions, form]); // fpFields is stable
+  }, [aiFpSuggestions, form]);
 
   useEffect(() => {
     if (aiGscSuggestions) {
-      setResult(null); // Reset result if GSC suggestions also come in (might be part of same analysis)
+      setResult(null);
       GSC_FACTORS.forEach(factor => {
         const suggestedRating = aiGscSuggestions[factor.id as GSCFactorId];
         if (suggestedRating !== undefined && suggestedRating !== null) {
@@ -127,7 +128,45 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Function Point Components</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Function Point Components</CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary">
+                      <HelpCircle className="h-5 w-5" />
+                      <span className="sr-only">How FP is Calculated</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>How Function Points are Calculated</DialogTitle>
+                      <DialogDescription>
+                        This application uses a simplified Function Point calculation method.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2 text-sm">
+                      <p><strong>1. Unadjusted Function Points (UFP):</strong><br />
+                        UFP = (EI × {SIMPLE_WEIGHTS.ei}) + (EO × {SIMPLE_WEIGHTS.eo}) + (EQ × {SIMPLE_WEIGHTS.eq}) + (ILF × {SIMPLE_WEIGHTS.ilf}) + (EIF × {SIMPLE_WEIGHTS.eif})<br />
+                        <span className="text-xs text-muted-foreground">Where EI, EO, etc., are counts, and the numbers are average complexity weights.</span>
+                      </p>
+                      <p><strong>2. Total Degree of Influence (TDI):</strong><br />
+                        TDI = Sum of all 14 Value Adjustment Factor ratings (0-5 each).
+                      </p>
+                      <p><strong>3. Value Adjustment Factor (VAF):</strong><br />
+                        VAF = 0.65 + (0.01 × TDI)
+                      </p>
+                      <p><strong>4. Adjusted Function Points (AFP):</strong><br />
+                        AFP = UFP × VAF
+                      </p>
+                    </div>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" className="mt-2">
+                        Close
+                      </Button>
+                    </DialogClose>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <CardDescription>Enter the counts for each type. AI suggestions may pre-fill these based on document analysis.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
