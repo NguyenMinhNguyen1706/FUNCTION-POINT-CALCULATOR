@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -13,13 +14,12 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FunctionSquare, Calculator, FileScan, History, Settings, BotMessageSquare } from 'lucide-react';
+import { FunctionSquare, Calculator, History, Settings, BotMessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/fp-calculator', label: 'FP Calculator', icon: FunctionSquare },
+  { href: '/fp-calculator', label: 'FP Suite & Analyzer', icon: FunctionSquare },
   { href: '/cocomo-estimator', label: 'COCOMO II', icon: Calculator },
-  { href: '/file-analyzer', label: 'File Analyzer', icon: FileScan },
   { href: '/history', label: 'History', icon: History },
 ];
 
