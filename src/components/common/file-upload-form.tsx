@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_FILE_TYPES = [
   'application/pdf',
   'text/plain',
@@ -30,7 +30,7 @@ const ACCEPTED_FILE_TYPES = [
 const formSchema = z.object({
   file: z
     .custom<FileList>((val) => val instanceof FileList && val.length > 0, "Please select a file.")
-    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 10MB.`)
     .refine(
       (files) => ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
       "Unsupported file format. Please upload PDF, TXT, JPG, PNG, GIF, WEBP, or SVG."
@@ -146,7 +146,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                   />
               </FormControl>
               <UiFormDescription>
-                Supported formats: PDF, TXT, JPG, PNG, GIF, WEBP, SVG. Max size: 5MB.
+                Supported formats: PDF, TXT, JPG, PNG, GIF, WEBP, SVG. Max size: 10MB.
               </UiFormDescription>
               <FormMessage />
             </FormItem>
