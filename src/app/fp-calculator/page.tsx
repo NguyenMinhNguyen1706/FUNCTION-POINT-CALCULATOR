@@ -27,7 +27,7 @@ export default function FpCalculatorPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Function Point Analysis</CardTitle>
-          <CardDescription>Enter values for FP components and GSCs. If a document is analyzed, AI suggestions for FP counts and GSC ratings may pre-fill relevant fields.</CardDescription>
+          <CardDescription>Enter values for FP components and VAF. If a document is analyzed, AI suggestions for FP counts and VAF ratings may pre-fill relevant fields.</CardDescription>
         </CardHeader>
         <CardContent>
           <FpCalculatorForm 
@@ -47,8 +47,8 @@ export default function FpCalculatorPage() {
         />
         <Card className="shadow-lg">
             <CardHeader>
-            <CardTitle>Analyze Document for Function Points & GSCs</CardTitle>
-            <CardDescription>The AI will attempt to identify FP components, estimate their counts, and suggest ratings for GSCs. Suggestions may pre-fill relevant fields in the form above.</CardDescription>
+            <CardTitle>Analyze Document for Function Points &amp; VAF</CardTitle>
+            <CardDescription>The AI will attempt to identify FP components, estimate their counts, and suggest ratings for VAF. Suggestions may pre-fill relevant fields in the form above.</CardDescription>
             </CardHeader>
             <CardContent>
             <FileUploadForm onAnalysisComplete={handleAnalysisComplete} />
