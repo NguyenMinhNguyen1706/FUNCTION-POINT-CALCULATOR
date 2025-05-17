@@ -42,7 +42,7 @@ export default function ComparisonPage() {
   const [cocomoAccuracyMetrics, setCocomoAccuracyMetrics] = useState<AccuracyMetrics | null>(null);
 
   const [isClient, setIsClient] = useState(false);
-  const MIN_DATA_POINTS_FOR_METRICS = 2; // Minimum data points to calculate/show MAE, RMSE, R2
+  const MIN_DATA_POINTS_FOR_METRICS = 1; // Minimum data points to calculate/show MAE, RMSE, R2
 
   useEffect(() => {
     setIsClient(true);
