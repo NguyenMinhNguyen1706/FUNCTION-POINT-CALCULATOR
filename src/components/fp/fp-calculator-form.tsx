@@ -5,14 +5,14 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Image from 'next/image';
+// import Image from 'next/image'; // No longer needed for this dialog
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { GSC_FACTORS, GSCFactorId, SIMPLE_WEIGHTS } from '@/lib/constants';
+import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
 import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry } from '@/lib/types';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 import { calculateFunctionPoints } from '@/lib/calculations';
@@ -142,21 +142,36 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                     <DialogHeader>
                       <DialogTitle>Function Point (FP) Calculation Overview</DialogTitle>
                     </DialogHeader>
-                    <div className="py-2">
-                      <Image 
-                        src="https://placehold.co/600x400.png" 
-                        alt="Function Point Calculation Steps" 
-                        width={600} 
-                        height={400} 
-                        className="rounded-md object-contain"
-                        data-ai-hint="function point calculation" 
-                      />
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        This image outlines the general steps for Function Point calculation.
-                      </p>
+                    <div className="py-2 space-y-3 text-sm">
+                      <p>FP is computed in two steps:</p>
+                      <div>
+                        <p className="font-semibold">1. Calculating Unadjusted Function Point Count (UFC).</p>
+                        <p className="pl-4">
+                          <code className="font-mono">UFC = 4 × NEI + 5 × NEO + 4 × NEQ + 7 × NEIF + 10 × NILF</code>
+                        </p>
+                        <p className="text-xs text-muted-foreground pl-4">(Using simplified average weights for NEI, NEO, NEQ, NEIF, NILF)</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">2. Multiplying the UFC by a Value Adjustment Factor (VAF).</p>
+                        <p className="pl-4">
+                          <code className="font-mono">VAF = 0.65 + (0.01 x ∑Fi)</code>
+                        </p>
+                        <p className="pl-4 text-xs text-muted-foreground">Where Fj is the rating of the j-th factor (0-5).</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">3. Final Formula:</p>
+                        <p className="pl-4">
+                          <code className="font-mono">FP = UFC × VAF</code>
+                        </p>
+                      </div>
+                      <div>
+                         <p className="font-semibold">The VAF value ranges:</p>
+                         <p className="pl-4 text-xs text-muted-foreground">Minimum VAF = 0.65 (when all Fj = 0)</p>
+                         <p className="pl-4 text-xs text-muted-foreground">Maximum VAF = 1.35 (when all Fj = 5)</p>
+                      </div>
                     </div>
                     <DialogClose asChild>
-                      <Button type="button" variant="outline" className="mt-2">
+                      <Button type="button" variant="outline" className="mt-4">
                         Close
                       </Button>
                     </DialogClose>
