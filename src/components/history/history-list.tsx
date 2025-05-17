@@ -3,15 +3,17 @@
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
-import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult, AnalyzeDocumentOutput } from '@/lib/types';
-import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
+import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult } from '@/lib/types';
+// AnalyzeDocumentOutput is no longer directly stored in history, so its import might not be needed here
+// GSC_FACTORS is still needed for rendering GSC details within FP results
+import { GSC_FACTORS, GSCFactorId } from '@/lib/constants'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIcon, Save, FileDown } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, History as HistoryIcon, Save, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -29,7 +31,7 @@ import { Separator } from '../ui/separator';
 const IconMap = {
   FP: FunctionSquare,
   COCOMO: Calculator,
-  ANALYSIS: FileText,
+  // ANALYSIS: FileText, // Removed
 };
 
 interface ActualsInputState {
@@ -137,16 +139,16 @@ export function HistoryList() {
     }
 
     const baseHeaders = [
-      'ID', 'Timestamp', 'Type', 'File Name', 
+      'ID', 'Timestamp', 'Type', 'Source File Name (if FP from Analysis)', 
       'KSLOC (COCOMO)', 'EI (FP)', 'EO (FP)', 'EQ (FP)', 'ILF (FP)', 'EIF (FP)',
       'UFP (FP)', 'VAF (FP)', 'AFP Estimated (FP)', 'AFP Actual (FP)',
       'Effort Estimated PM (COCOMO)', 'Dev Time Estimated M (COCOMO)',
       'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
-      'AI Est. UFP',
     ];
-    const analysisFpHeaders = ['Analysis EI Desc', 'Analysis EI Count', 'Analysis EO Desc', 'Analysis EO Count', 'Analysis EQ Desc', 'Analysis EQ Count', 'Analysis ILF Desc', 'Analysis ILF Count', 'Analysis EIF Desc', 'Analysis EIF Count'];
     
-    const headers = [...baseHeaders, ...analysisFpHeaders];
+    // GSC headers
+    const gscHeaders = GSC_FACTORS.map(gsc => `GSC: ${gsc.name}`);
+    const headers = [...baseHeaders, ...gscHeaders];
     const csvRows = [headers.join(',')];
 
     history.forEach(entry => {
@@ -156,46 +158,32 @@ export function HistoryList() {
         entry.type,
       ];
 
-      const emptyAnalysisFpSlots = Array(analysisFpHeaders.length).fill('');
-
       if (entry.type === 'FP') {
         const fpData = entry.data as FPCalculationResult;
         row.push(
-          '', // File Name
+          fpData.fileName ?? '', // Source File Name
           '', // KSLOC
           fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
           fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
           '', '', '', '', // COCOMO fields
-          '', // AI Est. UFP
-          ...emptyAnalysisFpSlots
         );
+        // Add GSC values for FP type
+        GSC_FACTORS.forEach(gsc => {
+            row.push(fpData.gsc[gsc.id as GSCFactorId] ?? '');
+        });
+
       } else if (entry.type === 'COCOMO') {
         const cocomoData = entry.data as CocomoCalculationResult;
         row.push(
-          '', // File Name
+          '', // Source File Name
           cocomoData.inputs.ksloc,
           '', '', '', '', '', // FP input fields
           '', '', '', '', // FP result fields
           cocomoData.effort, cocomoData.devTime,
           cocomoData.actualEffort, cocomoData.actualDevTime,
-          '', // AI Est. UFP
-          ...emptyAnalysisFpSlots
         );
-      } else if (entry.type === 'ANALYSIS') {
-        const analysisData = entry.data as { fileName: string; result: AnalyzeDocumentOutput };
-        const fp = analysisData.result.potentialFunctionPoints;
-        row.push(
-          analysisData.fileName,
-          '', '', '', '', '', '', // KSLOC & FP input fields
-          '', '', '', '', // FP result fields
-          '', '', '', '', // COCOMO fields
-          analysisData.result.estimatedUfp, // AI estimate
-          fp.EI.description, fp.EI.count,
-          fp.EO.description, fp.EO.count,
-          fp.EQ.description, fp.EQ.count,
-          fp.ILF.description, fp.ILF.count,
-          fp.EIF.description, fp.EIF.count
-        );
+        // Add empty GSC values for COCOMO type
+        GSC_FACTORS.forEach(() => row.push(''));
       }
       csvRows.push(row.map(escapeCsvCell).join(','));
     });
@@ -235,6 +223,7 @@ export function HistoryList() {
 
   const renderFPDetails = (entry: HistoryEntry & { type: 'FP'; data: FPCalculationResult }) => (
     <div className="space-y-2 text-sm">
+      {entry.data.fileName && <p><strong>Source File:</strong> {entry.data.fileName}</p>}
       <p><strong>UFP:</strong> {entry.data.ufp}</p>
       <p><strong>VAF:</strong> {entry.data.vaf}</p>
       <p className="font-semibold text-primary"><strong>AFP (Estimated):</strong> {entry.data.afp}</p>
@@ -243,6 +232,14 @@ export function HistoryList() {
       <ul className="list-disc list-inside pl-2">
         <li>EI: {entry.data.inputs.ei}, EO: {entry.data.inputs.eo}, EQ: {entry.data.inputs.eq}, ILF: {entry.data.inputs.ilf}, EIF: {entry.data.inputs.eif}</li>
       </ul>
+      <h4 className="font-medium mt-2">GSC Ratings:</h4>
+        <ScrollArea className="h-[100px] p-2 border rounded-md bg-muted/10">
+            <ul className="list-disc list-inside pl-2 text-xs">
+            {GSC_FACTORS.map(factor => (
+                <li key={factor.id}>{factor.name}: {entry.data.gsc[factor.id as GSCFactorId] ?? 'N/A'}</li>
+            ))}
+            </ul>
+      </ScrollArea>
       <Separator className="my-3" />
       <div className="space-y-2">
         <Label htmlFor={`actualAfp-${entry.id}`}>Actual AFP:</Label>
@@ -299,37 +296,7 @@ export function HistoryList() {
     </div>
   );
 
-  const renderAnalysisDetails = (data: { fileName: string; result: AnalyzeDocumentOutput }) => (
-     <div className="space-y-3 text-sm">
-      <p><strong>File Name:</strong> {data.fileName}</p>
-      
-      {(data.result.estimatedUfp !== undefined ) && (
-        <div>
-          <h4 className="font-medium mt-2 mb-1">AI's UFP Estimation:</h4>
-          <div className="text-xs p-2 border rounded-md bg-muted/20 space-y-0.5">
-            {data.result.estimatedUfp !== null && data.result.estimatedUfp !== undefined && <p className="font-semibold text-primary">Est. UFP: {data.result.estimatedUfp.toFixed(2)}</p>}
-          </div>
-        </div>
-      )}
-
-      <h4 className="font-medium mt-2">Potential Function Points:</h4>
-      <ScrollArea className="h-[150px] p-2 border rounded-md bg-muted/10">
-        <div className="space-y-1 text-xs">
-          {Object.entries(data.result.potentialFunctionPoints).map(([key, value]) => (
-            value && (
-              <div key={key}>
-                <strong className="text-foreground">{key}:</strong>
-                <p className="pl-2 italic whitespace-pre-wrap">Description: {value.description || "Not described"}</p>
-                {(value.count !== undefined && value.count !== null) && (
-                   <p className="pl-2">Est. Count: {value.count}</p>
-                )}
-              </div>
-            )
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
-  );
+  // renderAnalysisDetails is removed
 
   return (
     <div className="space-y-4">
@@ -361,6 +328,11 @@ export function HistoryList() {
         <Accordion type="multiple" className="w-full">
           {history.sort((a,b) => b.timestamp - a.timestamp).map(entry => { 
             const ItemIcon = IconMap[entry.type];
+            let titleText = `${entry.type} Calculation`;
+            if (entry.type === 'FP' && entry.data.fileName) {
+                titleText = `FP Calc (from ${entry.data.fileName})`;
+            }
+
             return (
               <AccordionItem value={entry.id} key={entry.id} className="border-b">
                 <AccordionTrigger className="hover:no-underline">
@@ -368,7 +340,7 @@ export function HistoryList() {
                     <div className="flex items-center gap-3">
                        <ItemIcon className="h-5 w-5 text-primary" />
                        <span className="font-medium text-sm sm:text-base truncate max-w-[200px] sm:max-w-xs md:max-w-md">
-                        {entry.type === 'ANALYSIS' ? `Analysis: ${entry.data.fileName}` : `${entry.type} Calculation`}
+                        {titleText}
                        </span>
                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                          {format(new Date(entry.timestamp), "PPp")}
@@ -405,7 +377,7 @@ export function HistoryList() {
                 <AccordionContent className="p-4 bg-muted/50 rounded-md">
                   {entry.type === 'FP' && renderFPDetails(entry as HistoryEntry & { type: 'FP'; data: FPCalculationResult })}
                   {entry.type === 'COCOMO' && renderCocomoDetails(entry as HistoryEntry & { type: 'COCOMO'; data: CocomoCalculationResult })}
-                  {entry.type === 'ANALYSIS' && renderAnalysisDetails(entry.data as { fileName: string; result: AnalyzeDocumentOutput })}
+                  {/* Removed entry.type === 'ANALYSIS' block */}
                 </AccordionContent>
               </AccordionItem>
             )

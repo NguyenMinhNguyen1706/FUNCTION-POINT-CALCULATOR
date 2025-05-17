@@ -1,5 +1,4 @@
 
-
 export interface FPInputs {
   ei: number;
   eo: number;
@@ -19,6 +18,7 @@ export interface FPCalculationResult {
   inputs: FPInputs;
   gsc: GSCInputs;
   actualAfp?: number; // Added for storing actual AFP
+  fileName?: string; // Optional: To store filename if FP result came from analysis
 }
 
 export interface CocomoInputs {
@@ -39,7 +39,7 @@ export interface CocomoCalculationResult {
   actualDevTime?: number; // Added for storing actual development time
 }
 
-// Re-exporting AnalyzeDocumentOutput from the AI flow for type consistency in HistoryEntry
+// Re-exporting AnalyzeDocumentOutput from the AI flow for type consistency
 export type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 
 
@@ -54,25 +54,6 @@ export type HistoryEntry = (
     type: 'COCOMO';
     timestamp: number;
     data: CocomoCalculationResult;
-  } | {
-    id: string;
-    type: 'ANALYSIS';
-    timestamp: number;
-    data: {
-      fileName: string;
-      result: AnalyzeDocumentOutput; // Using the specific type from AI flow
-    }
   }
+  // 'ANALYSIS' type is removed
 );
-
-// This FileAnalysisResult type might be redundant if AnalyzeDocumentOutput is used directly
-// Kept for now if there are other places it might be used, but ideally standardize on AnalyzeDocumentOutput
-export interface FileAnalysisResult {
-  potentialFunctionPoints: {
-    EI: string;
-    EO: string;
-    EQ: string;
-    ILF: string;
-    EIF: string;
-  };
-}

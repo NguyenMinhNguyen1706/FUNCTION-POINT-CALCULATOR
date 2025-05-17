@@ -11,7 +11,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Terminal } from 'lucide-react';
 import { analyzeDocument, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
-import type { HistoryEntry } from '@/lib/types';
+import type { HistoryEntry, FPInputs, GSCInputs, FPCalculationResult } from '@/lib/types';
+import { calculateFunctionPoints } from '@/lib/calculations';
+import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -47,7 +49,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
   const [analysisResult, setAnalysisResult] = useState<AnalyzeDocumentOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [currentFileName, setCurrentFileName] = useState<string | null>(null); // Renamed from fileName
   const { toast } = useToast();
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>('calculationHistory', []);
 
@@ -59,10 +61,10 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      setFileName(files[0].name);
+      setCurrentFileName(files[0].name);
       form.setValue('file', files, { shouldValidate: true });
     } else {
-      setFileName(null);
+      setCurrentFileName(null);
       form.resetField('file');
     }
   };
@@ -74,7 +76,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
     setIsLoading(true);
     setError(null);
     setAnalysisResult(null);
-    setFileName(file.name);
+    // setCurrentFileName is already set by handleFileChange
 
     try {
       const reader = new FileReader();
@@ -111,18 +113,35 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
   };
 
   const handleSaveToHistory = () => {
-    if (analysisResult && fileName) {
+    if (analysisResult && currentFileName) {
+      const fpInputs: FPInputs = {
+        ei: analysisResult.potentialFunctionPoints.EI?.count ?? 0,
+        eo: analysisResult.potentialFunctionPoints.EO?.count ?? 0,
+        eq: analysisResult.potentialFunctionPoints.EQ?.count ?? 0,
+        ilf: analysisResult.potentialFunctionPoints.ILF?.count ?? 0,
+        eif: analysisResult.potentialFunctionPoints.EIF?.count ?? 0,
+      };
+
+      const gscInputs: GSCInputs = GSC_FACTORS.reduce((acc, factor) => {
+        acc[factor.id as GSCFactorId] = 0; // Default all GSC ratings to 0 for AI-derived entry
+        return acc;
+      }, {} as GSCInputs);
+
+      const calculatedFpResult = calculateFunctionPoints(fpInputs, gscInputs);
+      
+      const historyData: FPCalculationResult = {
+        ...calculatedFpResult,
+        fileName: currentFileName, // Store the filename with the FP result
+      };
+
       const newEntry: HistoryEntry = {
         id: Date.now().toString(),
-        type: 'ANALYSIS',
+        type: 'FP', // Save as FP type
         timestamp: Date.now(),
-        data: {
-          fileName: fileName,
-          result: analysisResult
-        },
+        data: historyData,
       };
       setHistory([newEntry, ...history]);
-      toast({ title: "Saved to History", description: "File analysis result has been saved." });
+      toast({ title: "Saved to History", description: "FP calculation based on AI analysis has been saved." });
     }
   };
 
@@ -176,10 +195,10 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
       {analysisResult && (
         <Card className="mt-8 shadow-md">
           <CardHeader>
-            <CardTitle>Analysis Results for: <span className="text-primary">{fileName}</span></CardTitle>
+            <CardTitle>Analysis Results for: <span className="text-primary">{currentFileName}</span></CardTitle>
             <CardDescription>
               The AI has identified potential Function Point components, estimated their counts, and provided an overall UFP estimate.
-              These suggestions can guide your input in the form above and some fields may have been pre-filled. Review carefully.
+              These suggestions have pre-filled relevant fields in the form above. Review carefully and adjust GSC ratings as needed.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -195,7 +214,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
             </div>
 
             <div>
-                <h4 className="font-semibold text-lg text-foreground">Potential Function Point Components:</h4>
+                <h4 className="font-semibold text-lg text-foreground">Potential Function Point Components Suggested by AI:</h4>
                 {Object.entries(analysisResult.potentialFunctionPoints).map(([key, value]) => (
                 <div key={key} className="mt-1">
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -209,7 +228,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleSaveToHistory} variant="outline">Save to History</Button>
+            <Button onClick={handleSaveToHistory} variant="outline">Save Analysis as FP Calculation</Button>
           </CardFooter>
         </Card>
       )}
