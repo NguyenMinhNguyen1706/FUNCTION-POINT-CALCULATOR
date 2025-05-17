@@ -20,8 +20,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
   'application/pdf',
   'text/plain',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  // 'application/msword', // .doc - Removed as not supported by Gemini API for direct analysis
+  // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx - Removed as not supported by Gemini API
   'image/jpeg',
   'image/png',
   'image/gif',
@@ -35,7 +35,7 @@ const formSchema = z.object({
     .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
     .refine(
       (files) => ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
-      "Unsupported file format. Please upload PDF, TXT, DOC, DOCX, JPG, PNG, GIF, WEBP, or SVG."
+      "Unsupported file format. Please upload PDF, TXT, JPG, PNG, GIF, WEBP, or SVG."
     ),
 });
 
@@ -148,7 +148,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                   />
               </FormControl>
               <UiFormDescription>
-                Supported formats: PDF, TXT, DOC, DOCX, JPG, PNG, GIF, WEBP, SVG. Max size: 5MB.
+                Supported formats: PDF, TXT, JPG, PNG, GIF, WEBP, SVG. Max size: 5MB.
               </UiFormDescription>
               <FormMessage />
             </FormItem>
@@ -198,6 +198,18 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                 )}
               </div>
             ))}
+             {analysisResult.gscRatings && Object.keys(analysisResult.gscRatings).length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold text-lg text-foreground mb-1">Suggested GSC Ratings:</h4>
+                 {Object.entries(analysisResult.gscRatings)
+                  .filter(([_, value]) => value !== null && value !== undefined)
+                  .map(([key, value]) => (
+                  <p key={key} className="text-sm text-muted-foreground">
+                    <span className="font-medium">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:</span> {value}
+                  </p>
+                ))}
+              </div>
+            )}
           </CardContent>
           <CardFooter>
             <Button onClick={handleSaveToHistory} variant="outline">Save to History</Button>

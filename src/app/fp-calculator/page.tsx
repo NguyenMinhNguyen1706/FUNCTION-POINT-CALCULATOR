@@ -1,9 +1,10 @@
 
 "use client";
 
-import { FunctionSquare } from 'lucide-react';
+import { FunctionSquare, FileScan } from 'lucide-react';
 import { PageHeader } from '@/components/common/page-header';
 import { FpCalculatorClientContent } from '@/components/fp/fp-calculator-client-content';
+
 
 export default function FpCalculatorPage() {
   return (
