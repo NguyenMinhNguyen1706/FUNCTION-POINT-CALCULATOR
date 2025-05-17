@@ -26,12 +26,12 @@ export type AnalyzeDocumentInput = z.infer<typeof AnalyzeDocumentInputSchema>;
 
 const FunctionPointDetailSchema = z.object({
   description: z.string().describe("A textual summary of the identified items for this function point type."),
-  count: z.number().optional().nullable().describe("An estimated numerical count for this function point type. Provide this if a reasonable estimate can be made from the document. If not, this can be omitted or set to null."),
+  count: z.number().int().optional().nullable().describe("An estimated numerical count for this function point type. Provide this if a reasonable estimate can be made from the document. If not, this can be omitted or set to null."),
 });
 
 // Dynamically create the GSC ratings part of the schema
 const gscRatingsSchemaFields = GSC_FACTORS.reduce((acc, factor) => {
-  acc[factor.id as GSCFactorId] = z.number().min(0).max(5).optional().nullable()
+  acc[factor.id as GSCFactorId] = z.number().int().min(0).max(5).optional().nullable()
     .describe(`Estimated rating (0-5) for ${factor.name}. Omit or set to null if not determinable.`);
   return acc;
 }, {} as Record<GSCFactorId, z.ZodOptional<z.ZodNullable<z.ZodNumber>>>);
@@ -73,7 +73,7 @@ Analyze the provided document for three main purposes:
 1. Identify potential Function Point components: External Inputs (EI), External Outputs (EO), External Inquiries (EQ), Internal Logical Files (ILF), and External Interface Files (EIF).
    For each identified Function Point type:
      a. Provide a concise textual description summarizing what was identified.
-     b. Provide an estimated numerical count of how many distinct items of that type you identified. If you cannot reasonably determine a count, set it to null.
+     b. Provide an estimated numerical count (integer) of how many distinct items of that type you identified. If you cannot reasonably determine a count, set it to null.
 
 2. Estimate ratings for General System Characteristics (GSCs). For each GSC listed below, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating, set it to null.
    General System Characteristics to evaluate:
@@ -90,24 +90,7 @@ Analyze the provided document for three main purposes:
 
 Document: {{media url=documentDataUri}}
 
-Provide your analysis in the following JSON format:
-{
-  "potentialFunctionPoints": {
-    "EI": { "description": "...", "count": null },
-    "EO": { "description": "...", "count": null },
-    "EQ": { "description": "...", "count": null },
-    "ILF": { "description": "...", "count": null },
-    "EIF": { "description": "...", "count": null }
-  },
-  "gscRatings": {
-    "dataCommunications": null,
-    // ... (all other GSC factors)
-    "facilitateChange": null
-  },
-  "estimatedUfp": null,
-  "estimatedVaf": null,
-  "estimatedAfp": null
-}
+Provide your analysis in JSON format, adhering to the defined output schema.
 Ensure all fields exist in the output, using null if a value cannot be determined. For GSC ratings, provide an integer between 0 and 5, or null. For FP counts, provide an integer or null. For estimated UFP/VAF/AFP, provide a number or null.`,
 });
 
@@ -122,4 +105,3 @@ const analyzeDocumentFlow = ai.defineFlow(
     return output!;
   }
 );
-
