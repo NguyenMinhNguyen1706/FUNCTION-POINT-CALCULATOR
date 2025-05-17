@@ -5,14 +5,13 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// import Image from 'next/image'; // No longer needed for this dialog
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
+import { GSC_FACTORS, GSCFactorId, SIMPLE_WEIGHTS } from '@/lib/constants';
 import type { FPInputs, GSCInputs, FPCalculationResult, HistoryEntry } from '@/lib/types';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-for-function-points';
 import { calculateFunctionPoints } from '@/lib/calculations';
@@ -20,15 +19,28 @@ import { FpChart } from './fp-chart';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
 import { HelpCircle } from 'lucide-react';
 
+const MAX_FP_INPUT_VALUE = 99999;
+
+// Schema for a single Function Point component input field
+const fpSingleComponentSchema = z.coerce
+  .number({
+    // This message will appear for non-numeric strings AND for empty strings (as "" coerces to NaN)
+    invalid_type_error: "Vui lòng chỉ nhập số.", 
+  })
+  .int("Chỉ được nhập số nguyên (0, 1, 2, 3…) thôi nhé.") // Ensures it's an integer, 0 is allowed
+  .min(0, "Không được nhập số âm vì số lượng không thể âm.") // Allows 0 and positive integers
+  .max(MAX_FP_INPUT_VALUE, "Số quá lớn, kiểm tra lại xem có nhầm không nhé!");
+
+// Schema for all Function Point component inputs
 const fpInputSchema = z.object({
-  ei: z.coerce.number().min(0, "Must be non-negative").default(0),
-  eo: z.coerce.number().min(0, "Must be non-negative").default(0),
-  eq: z.coerce.number().min(0, "Must be non-negative").default(0),
-  ilf: z.coerce.number().min(0, "Must be non-negative").default(0),
-  eif: z.coerce.number().min(0, "Must be non-negative").default(0),
+  ei: fpSingleComponentSchema,
+  eo: fpSingleComponentSchema,
+  eq: fpSingleComponentSchema,
+  ilf: fpSingleComponentSchema,
+  eif: fpSingleComponentSchema,
 });
 
 const gscSchemaShape = GSC_FACTORS.reduce((acc, factor) => {
@@ -36,7 +48,20 @@ const gscSchemaShape = GSC_FACTORS.reduce((acc, factor) => {
   return acc;
 }, {} as Record<GSCFactorId, z.ZodNumber>);
 
-const formSchema = fpInputSchema.extend(gscSchemaShape);
+const formSchema = fpInputSchema.extend(gscSchemaShape)
+  .refine(data => {
+    // Form-level validation: Check if all FP inputs are 0
+    const fpValues = [data.ei, data.eo, data.eq, data.ilf, data.eif];
+    const allFpInputsAreZero = fpValues.every(val => val === 0);
+    
+    if (allFpInputsAreZero) {
+      return false; // Triggers the refinement error
+    }
+    return true;
+  }, {
+    message: "Không có dữ liệu nào để tính. Ít nhất một thành phần Function Point phải lớn hơn 0.",
+    path: ["ei"], // Assign the error message to the 'ei' field for display
+  });
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -52,10 +77,11 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: { // These initial 0s are valid and will be checked by the .refine if all are 0 on submit
       ei: 0, eo: 0, eq: 0, ilf: 0, eif: 0,
       ...GSC_FACTORS.reduce((acc, factor) => ({ ...acc, [factor.id]: 0 }), {}),
     },
+    mode: "onChange", // Validate on change for quicker feedback
   });
 
   const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiFpSuggestions']> }[] = [
@@ -68,16 +94,19 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
   
   useEffect(() => {
     if (aiFpSuggestions) {
-      setResult(null); // Reset result when new AI suggestions come in
+      setResult(null); 
       fpFields.forEach(fieldData => {
         const suggestion = aiFpSuggestions[fieldData.aiKey];
         if (suggestion && suggestion.count !== undefined && suggestion.count !== null) {
           form.setValue(fieldData.name, suggestion.count, { shouldValidate: true });
+        } else {
+          // If AI provides no count or null, set to 0 or clear, depending on desired behavior
+          // form.setValue(fieldData.name, 0, { shouldValidate: true }); 
         }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiFpSuggestions, form]);
+  }, [aiFpSuggestions, form.setValue]); // form.setValue added to deps
 
   useEffect(() => {
     if (aiGscSuggestions) {
@@ -89,7 +118,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         }
       });
     }
-  }, [aiGscSuggestions, form]);
+  }, [aiGscSuggestions, form.setValue]); // form.setValue added to deps
 
 
   const onSubmit = (data: FormData) => {
@@ -142,34 +171,50 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                     <DialogHeader>
                       <DialogTitle>Function Point (FP) Calculation Overview</DialogTitle>
                     </DialogHeader>
-                    <div className="py-2 space-y-3 text-sm">
-                      <p>FP is computed in two steps:</p>
-                      <div>
-                        <p className="font-semibold">1. Calculating Unadjusted Function Point Count (UFC).</p>
-                        <p className="pl-4">
-                          <code className="font-mono">UFC = 4 × NEI + 5 × NEO + 4 × NEQ + 7 × NEIF + 10 × NILF</code>
-                        </p>
-                        <p className="text-xs text-muted-foreground pl-4">(Using simplified average weights for NEI, NEO, NEQ, NEIF, NILF)</p>
+                    <ScrollArea className="max-h-[60vh] pr-2">
+                      <div className="py-2 space-y-3 text-sm break-words">
+                        <p>FP is computed in two steps:</p>
+                        <div>
+                          <p className="font-semibold">1. Calculating Unadjusted Function Point Count (UFC).</p>
+                          <p className="pl-4">
+                            UFC is the sum of each function point type (NEI, NEO, NEQ, NEIF, NILF) multiplied by its weight. This application uses simplified average weights:
+                          </p>
+                          <ul className="list-disc pl-8 text-xs">
+                            <li>External Inputs (EI): {SIMPLE_WEIGHTS.ei}</li>
+                            <li>External Outputs (EO): {SIMPLE_WEIGHTS.eo}</li>
+                            <li>External Inquiries (EQ): {SIMPLE_WEIGHTS.eq}</li>
+                            <li>Internal Logical Files (ILF): {SIMPLE_WEIGHTS.ilf}</li>
+                            <li>External Interface Files (EIF): {SIMPLE_WEIGHTS.eif}</li>
+                          </ul>
+                          <p className="pl-4 mt-1">
+                            <code className="font-mono text-xs bg-muted p-1 rounded">UFC = (EI × {SIMPLE_WEIGHTS.ei}) + (EO × {SIMPLE_WEIGHTS.eo}) + (EQ × {SIMPLE_WEIGHTS.eq}) + (ILF × {SIMPLE_WEIGHTS.ilf}) + (EIF × {SIMPLE_WEIGHTS.eif})</code>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold">2. Calculating the Value Adjustment Factor (VAF).</p>
+                          <p className="pl-4">
+                            VAF is derived from the sum of ratings (∑Fi) of the 14 General System Characteristics (GSCs), also known as Value Adjustment Factors. Each factor (Fj) is rated from 0 (not present) to 5 (strong influence).
+                          </p>
+                          <p className="pl-4 mt-1">
+                            <code className="font-mono text-xs bg-muted p-1 rounded">Total Degree of Influence (TDI) = ∑Fi</code>
+                          </p>
+                           <p className="pl-4 mt-1">
+                            <code className="font-mono text-xs bg-muted p-1 rounded">VAF = 0.65 + (0.01 × TDI)</code>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold">3. Final Formula: Adjusted Function Points (FP or AFP)</p>
+                          <p className="pl-4">
+                            <code className="font-mono text-xs bg-muted p-1 rounded">FP = UFC × VAF</code>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold">VAF Range:</p>
+                          <p className="pl-4 text-xs text-muted-foreground">Minimum VAF = 0.65 (when TDI = 0, i.e., all GSC ratings are 0)</p>
+                          <p className="pl-4 text-xs text-muted-foreground">Maximum VAF = 1.35 (when TDI = 70, i.e., all 14 GSC ratings are 5)</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">2. Multiplying the UFC by a Value Adjustment Factor (VAF).</p>
-                        <p className="pl-4">
-                          <code className="font-mono">VAF = 0.65 + (0.01 x ∑Fi)</code>
-                        </p>
-                        <p className="pl-4 text-xs text-muted-foreground">Where Fj is the rating of the j-th factor (0-5).</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold">3. Final Formula:</p>
-                        <p className="pl-4">
-                          <code className="font-mono">FP = UFC × VAF</code>
-                        </p>
-                      </div>
-                      <div>
-                         <p className="font-semibold">The VAF value ranges:</p>
-                         <p className="pl-4 text-xs text-muted-foreground">Minimum VAF = 0.65 (when all Fj = 0)</p>
-                         <p className="pl-4 text-xs text-muted-foreground">Maximum VAF = 1.35 (when all Fj = 5)</p>
-                      </div>
-                    </div>
+                    </ScrollArea>
                     <DialogClose asChild>
                       <Button type="button" variant="outline" className="mt-4">
                         Close
@@ -191,7 +236,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                       <FormItem>
                         <FormLabel>{fieldData.label}</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="0" {...formHookField} />
+                          <Input type="number" placeholder="0" {...formHookField} onChange={e => formHookField.onChange(e.target.value === '' ? '' : e.target.valueAsNumber)} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -230,7 +275,6 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                             </SelectContent>
                           </Select>
                         </FormControl>
-                        <UiFormDescription className="text-xs">{factor.description}</UiFormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -292,3 +336,5 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
   );
 }
 
+
+    
