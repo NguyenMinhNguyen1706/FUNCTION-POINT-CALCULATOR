@@ -65,29 +65,29 @@ const prompt = ai.definePrompt({
   name: 'analyzeDocumentPrompt',
   input: {schema: AnalyzeDocumentInputSchema},
   output: {schema: AnalyzeDocumentOutputSchema},
-  prompt: `You are an expert software analyst skilled at Function Point Analysis and evaluating system characteristics.
+  prompt: `You are an expert software analyst focusing on Function Point Analysis.
+Analyze the provided document. Your goal is to:
 
-Analyze the provided document for three main purposes:
-1. Identify potential Function Point components: External Inputs (EI), External Outputs (EO), External Inquiries (EQ), Internal Logical Files (ILF), and External Interface Files (EIF).
-   For each identified Function Point type:
-     a. Provide a concise textual description summarizing what was identified.
-     b. Provide an estimated numerical count (integer) of how many distinct items of that type you identified. If you cannot reasonably determine a count, set it to null.
+1.  **Identify Function Point Components**: For External Inputs (EI), External Outputs (EO), External Inquiries (EQ), Internal Logical Files (ILF), and External Interface Files (EIF):
+    *   Provide a textual summary of what was identified for each type.
+    *   Estimate a numerical count (integer) for each type. If a count cannot be reasonably determined, its value must be null.
 
-2. Estimate ratings for General System Characteristics (GSCs) as defined in the 'gscRatings' section of the output schema. For each characteristic, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating for a specific GSC, set its value to null.
+2.  **Estimate General System Characteristic (GSC) Ratings**: For each GSC defined in the output schema's 'gscRatings' section (refer to schema field descriptions for GSC details):
+    *   Provide an integer rating from 0 (Not Present/Applicable) to 5 (Strongly Present/Influential).
+    *   If a rating for a specific GSC cannot be determined from the document, its value must be null.
 
-3. After determining the FP component counts and GSC ratings, provide an overall AI-estimated calculation for Unadjusted Function Points (UFP), Value Adjustment Factor (VAF), and Adjusted Function Points (AFP).
-   - To estimate UFP, use the component counts you derived and the following simplified average weights: ${weightsString}.
-     Formula: UFP = (EI_count × ${SIMPLE_WEIGHTS.ei}) + (EO_count × ${SIMPLE_WEIGHTS.eo}) + (EQ_count × ${SIMPLE_WEIGHTS.eq}) + (ILF_count × ${SIMPLE_WEIGHTS.ilf}) + (EIF_count × ${SIMPLE_WEIGHTS.eif}).
-   - To estimate VAF, use the GSC ratings you derived. Let TDI be the sum of all 14 GSC ratings.
-     Formula: VAF = 0.65 + (0.01 × TDI). The VAF should be between 0.65 and 1.35.
-   - To estimate AFP, use your estimated UFP and VAF.
-     Formula: AFP = UFP × VAF.
-   Provide these as 'estimatedUfp', 'estimatedVaf', and 'estimatedAfp' in the output. If any component count or GSC rating needed for these estimations is null, then the corresponding estimated UFP/VAF/AFP should also be null.
+3.  **Estimate Overall Function Points (AI Estimate)**:
+    *   Using your identified component counts and GSC ratings, attempt to calculate an estimated Unadjusted Function Points (UFP), Value Adjustment Factor (VAF), and Adjusted Function Points (AFP).
+    *   For UFP, use these average weights: ${weightsString}. (Formula: UFP = Sum of (component_count × average_weight)).
+    *   For VAF, use the sum of your GSC ratings (TDI). (Formula: VAF = 0.65 + (0.01 × TDI)).
+    *   For AFP, use your estimated UFP and VAF. (Formula: AFP = UFP × VAF).
+    *   If any component count or GSC rating necessary for these calculations is null, then the corresponding estimated UFP, VAF, or AFP must also be null.
 
 Document: {{media url=documentDataUri}}
 
-Provide your analysis in JSON format, adhering to the defined output schema.
-Ensure all fields exist in the output, using null if a value cannot be determined. For GSC ratings, provide an integer between 0 and 5, or null. For FP counts, provide an integer or null. For estimated UFP/VAF/AFP, provide a number or null.`,
+Output your analysis in JSON format, strictly following the defined output schema.
+Ensure all schema fields are present. Use 'null' for any individual count, rating, or overall estimation (UFP, VAF, AFP) that cannot be determined from the document.
+`,
 });
 
 const analyzeDocumentFlow = ai.defineFlow(
@@ -101,3 +101,4 @@ const analyzeDocumentFlow = ai.defineFlow(
     return output!;
   }
 );
+
