@@ -20,8 +20,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
   'application/pdf',
   'text/plain',
-  // 'application/msword', // .doc - Removed as not supported by Gemini API for direct analysis
-  // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx - Removed as not supported by Gemini API
   'image/jpeg',
   'image/png',
   'image/gif',
@@ -89,7 +87,7 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
           if (onAnalysisComplete) {
             onAnalysisComplete(result);
           }
-          toast({ title: "Analysis Complete", description: "Document analysis finished successfully. Suggestions and estimated counts are now available." });
+          toast({ title: "Analysis Complete", description: "Document analysis finished. Suggestions and estimated counts are now available." });
         } catch (aiError: any) {
           console.error("AI Analysis Error:", aiError);
           setError(`AI analysis failed: ${aiError.message || 'Unknown error'}`);
@@ -180,24 +178,38 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
           <CardHeader>
             <CardTitle>Analysis Results for: <span className="text-primary">{fileName}</span></CardTitle>
             <CardDescription>
-              The AI has identified potential Function Point components and estimated their counts.
-              These suggestions can guide your input in the form above and some fields may have been pre-filled.
+              The AI has identified potential Function Point components, estimated their counts, suggested GSC ratings, and provided an overall FP estimate.
+              These suggestions can guide your input in the form above and some fields may have been pre-filled. Review carefully.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(analysisResult.potentialFunctionPoints).map(([key, value]) => (
-              <div key={key}>
-                <h4 className="font-semibold text-lg text-foreground">{key}:</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  <span className="font-medium">Description:</span> {value.description || "Not described"}
-                </p>
-                {value.count !== undefined && value.count !== null && (
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium">Estimated Count:</span> {value.count}
-                  </p>
+            <div>
+                <h4 className="font-semibold text-lg text-foreground mb-2">AI's Overall FP Estimation:</h4>
+                {analysisResult.estimatedAfp !== null && analysisResult.estimatedAfp !== undefined ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                        <p><span className="font-medium">Est. UFP:</span> {analysisResult.estimatedUfp?.toFixed(2) ?? 'N/A'}</p>
+                        <p><span className="font-medium">Est. VAF:</span> {analysisResult.estimatedVaf?.toFixed(2) ?? 'N/A'}</p>
+                        <p className="font-semibold text-primary"><span className="font-medium">Est. AFP:</span> {analysisResult.estimatedAfp?.toFixed(2) ?? 'N/A'}</p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground mb-4">AI did not provide an overall FP estimate.</p>
                 )}
-              </div>
-            ))}
+            </div>
+
+            <div>
+                <h4 className="font-semibold text-lg text-foreground">Potential Function Point Components:</h4>
+                {Object.entries(analysisResult.potentialFunctionPoints).map(([key, value]) => (
+                <div key={key} className="mt-1">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    <span className="font-medium text-foreground">{key}:</span> <span className="italic">{value.description || "Not described"}</span>
+                    {value.count !== undefined && value.count !== null && (
+                        <span className="ml-2">(Est. Count: {value.count})</span>
+                    )}
+                    </p>
+                </div>
+                ))}
+            </div>
+            
              {analysisResult.gscRatings && Object.keys(analysisResult.gscRatings).length > 0 && (
               <div className="mt-4">
                 <h4 className="font-semibold text-lg text-foreground mb-1">Suggested GSC Ratings:</h4>
@@ -208,6 +220,9 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                     <span className="font-medium">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:</span> {value}
                   </p>
                 ))}
+                {Object.values(analysisResult.gscRatings).every(v => v === null || v === undefined) && (
+                    <p className="text-sm text-muted-foreground">AI did not provide GSC ratings.</p>
+                )}
               </div>
             )}
           </CardContent>
@@ -219,3 +234,4 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
     </Form>
   );
 }
+

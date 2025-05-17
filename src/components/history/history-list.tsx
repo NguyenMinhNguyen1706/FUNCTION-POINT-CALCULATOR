@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIcon, Save, FileDown } from 'lucide-react';
+import { Trash2, FunctionSquare, Calculator, FileText, History as HistoryIconImport, Save, FileDown } from 'lucide-react'; // Aliased History
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -62,7 +62,7 @@ export function HistoryList() {
       }
     });
     setActualsInput(initialActuals);
-  }, [history]);
+  }, [history, isClient]); // Added isClient to dependency array
 
   const handleActualInputChange = (entryId: string, field: keyof ActualsInputState[string], value: string) => {
     setActualsInput(prev => ({
@@ -142,11 +142,12 @@ export function HistoryList() {
       'UFP (FP)', 'VAF (FP)', 'AFP Estimated (FP)', 'AFP Actual (FP)',
       'Effort Estimated PM (COCOMO)', 'Dev Time Estimated M (COCOMO)',
       'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
+      'AI Est. UFP', 'AI Est. VAF', 'AI Est. AFP', // New AI overall estimate headers
     ];
-    const fpAnalysisHeaders = GSC_FACTORS.map(gsc => `Analysis GSC ${gsc.id} Rating`);
     const analysisFpHeaders = ['Analysis EI Desc', 'Analysis EI Count', 'Analysis EO Desc', 'Analysis EO Count', 'Analysis EQ Desc', 'Analysis EQ Count', 'Analysis ILF Desc', 'Analysis ILF Count', 'Analysis EIF Desc', 'Analysis EIF Count'];
+    const analysisGscHeaders = GSC_FACTORS.map(gsc => `Analysis GSC ${gsc.name} Rating`); // Using name for readability
 
-    const headers = [...baseHeaders, ...analysisFpHeaders, ...fpAnalysisHeaders];
+    const headers = [...baseHeaders, ...analysisFpHeaders, ...analysisGscHeaders];
     const csvRows = [headers.join(',')];
 
     history.forEach(entry => {
@@ -156,8 +157,8 @@ export function HistoryList() {
         entry.type,
       ];
 
-      const emptyFpAnalysisSlots = Array(analysisFpHeaders.length).fill('');
-      const emptyGscSlots = Array(fpAnalysisHeaders.length).fill('');
+      const emptyAnalysisFpSlots = Array(analysisFpHeaders.length).fill('');
+      const emptyAnalysisGscSlots = Array(analysisGscHeaders.length).fill('');
 
 
       if (entry.type === 'FP') {
@@ -168,8 +169,9 @@ export function HistoryList() {
           fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
           fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
           '', '', '', '', // COCOMO fields
-          ...emptyFpAnalysisSlots, // Analysis FP slots
-          ...emptyGscSlots      // Analysis GSC slots
+          '', '', '', // AI Est. UFP, VAF, AFP
+          ...emptyAnalysisFpSlots, 
+          ...emptyAnalysisGscSlots  
         );
       } else if (entry.type === 'COCOMO') {
         const cocomoData = entry.data as CocomoCalculationResult;
@@ -180,8 +182,9 @@ export function HistoryList() {
           '', '', '', '', // FP result fields
           cocomoData.effort, cocomoData.devTime,
           cocomoData.actualEffort, cocomoData.actualDevTime,
-          ...emptyFpAnalysisSlots, // Analysis FP slots
-          ...emptyGscSlots      // Analysis GSC slots
+          '', '', '', // AI Est. UFP, VAF, AFP
+          ...emptyAnalysisFpSlots, 
+          ...emptyAnalysisGscSlots 
         );
       } else if (entry.type === 'ANALYSIS') {
         const analysisData = entry.data as { fileName: string; result: AnalyzeDocumentOutput };
@@ -192,6 +195,7 @@ export function HistoryList() {
           '', '', '', '', '', '', // KSLOC & FP input fields
           '', '', '', '', // FP result fields
           '', '', '', '', // COCOMO fields
+          analysisData.result.estimatedUfp, analysisData.result.estimatedVaf, analysisData.result.estimatedAfp, // AI estimates
           fp.EI.description, fp.EI.count,
           fp.EO.description, fp.EO.count,
           fp.EQ.description, fp.EQ.count,
@@ -229,7 +233,7 @@ export function HistoryList() {
   if (history.length === 0) {
     return (
       <div className="text-center py-10">
-        <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <HistoryIconImport className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <p className="text-muted-foreground">No history yet.</p>
         <p className="text-sm text-muted-foreground">Perform some calculations or analyses to see them here.</p>
       </div>
@@ -303,9 +307,20 @@ export function HistoryList() {
   );
 
   const renderAnalysisDetails = (data: { fileName: string; result: AnalyzeDocumentOutput }) => (
-     <div className="space-y-2 text-sm">
+     <div className="space-y-3 text-sm">
       <p><strong>File Name:</strong> {data.fileName}</p>
       
+      {(data.result.estimatedUfp !== undefined || data.result.estimatedVaf !== undefined || data.result.estimatedAfp !== undefined) && (
+        <div>
+          <h4 className="font-medium mt-2 mb-1">AI's Overall FP Estimation:</h4>
+          <div className="text-xs p-2 border rounded-md bg-muted/20 space-y-0.5">
+            {data.result.estimatedUfp !== null && data.result.estimatedUfp !== undefined && <p>Est. UFP: {data.result.estimatedUfp.toFixed(2)}</p>}
+            {data.result.estimatedVaf !== null && data.result.estimatedVaf !== undefined && <p>Est. VAF: {data.result.estimatedVaf.toFixed(2)}</p>}
+            {data.result.estimatedAfp !== null && data.result.estimatedAfp !== undefined && <p className="font-semibold text-primary">Est. AFP: {data.result.estimatedAfp.toFixed(2)}</p>}
+          </div>
+        </div>
+      )}
+
       <h4 className="font-medium mt-2">Potential Function Points:</h4>
       <ScrollArea className="h-[150px] p-2 border rounded-md bg-muted/10">
         <div className="space-y-1 text-xs">
@@ -313,7 +328,7 @@ export function HistoryList() {
             value && (
               <div key={key}>
                 <strong className="text-foreground">{key}:</strong>
-                <p className="pl-2">Description: {value.description || "Not described"}</p>
+                <p className="pl-2 italic whitespace-pre-wrap">Description: {value.description || "Not described"}</p>
                 {(value.count !== undefined && value.count !== null) && (
                    <p className="pl-2">Est. Count: {value.count}</p>
                 )}
@@ -340,6 +355,9 @@ export function HistoryList() {
                 }
                 return null;
               })}
+              {Object.values(data.result.gscRatings).every(v => v === null || v === undefined) && (
+                <p className="text-xs text-muted-foreground text-center py-2">AI did not provide GSC ratings.</p>
+              )}
             </div>
           </ScrollArea>
         </>
@@ -391,31 +409,31 @@ export function HistoryList() {
                        </span>
                     </div>
                      
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
-                             <div 
-                              className="p-3 inline-flex items-center justify-center cursor-pointer rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-shrink-0" 
-                              role="button" 
-                              tabIndex={0} 
-                              aria-label="Delete entry"
-                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); (e.currentTarget as HTMLDivElement).click();}}} 
-                             >
-                                <Trash2 className="h-4 w-4" />
-                             </div>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this history entry? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteEntry(entry.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <div 
+                            className="p-3 inline-flex items-center justify-center cursor-pointer rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-shrink-0" 
+                            role="button" 
+                            tabIndex={0} 
+                            aria-label="Delete entry"
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); (e.currentTarget as HTMLDivElement).click();}}} 
+                            >
+                            <Trash2 className="h-4 w-4" />
+                            </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            Are you sure you want to delete this history entry? This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteEntry(entry.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 bg-muted/50 rounded-md">

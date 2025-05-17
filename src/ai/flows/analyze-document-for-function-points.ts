@@ -4,6 +4,7 @@
 /**
  * @fileOverview An AI agent that analyzes a document to identify potential Function Point components
  * (providing descriptions and estimated counts) and to estimate ratings for General System Characteristics (GSCs).
+ * It also attempts to provide an overall estimation of UFP, VAF, and AFP based on its analysis.
  *
  * - analyzeDocument - A function that handles the document analysis process.
  * - AnalyzeDocumentInput - The input type for the analyzeDocument function.
@@ -12,7 +13,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { GSC_FACTORS, GSCFactorId } from '@/lib/constants';
+import { GSC_FACTORS, GSCFactorId, SIMPLE_WEIGHTS } from '@/lib/constants';
 
 const AnalyzeDocumentInputSchema = z.object({
   documentDataUri: z
@@ -48,6 +49,9 @@ const AnalyzeDocumentOutputSchema = z.object({
     EIF: FunctionPointDetailSchema.describe('Potential External Interface Files (EIF) identified in the document, including a description and an estimated count.'),
   }).describe('Potential Function Point components identified in the document.'),
   gscRatings: GscRatingsSchema.optional().describe('Estimated ratings for General System Characteristics (GSCs).'),
+  estimatedUfp: z.number().optional().nullable().describe("The AI's estimated Unadjusted Function Points (UFP) based on its analysis of components and simplified average weights. This is an AI estimate."),
+  estimatedVaf: z.number().optional().nullable().describe("The AI's estimated Value Adjustment Factor (VAF) based on its GSC ratings. This is an AI estimate."),
+  estimatedAfp: z.number().optional().nullable().describe("The AI's estimated Adjusted Function Points (AFP = UFP * VAF). This is an AI estimate."),
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
 
@@ -57,6 +61,7 @@ export async function analyzeDocument(input: AnalyzeDocumentInput): Promise<Anal
 
 // Create the GSC list string for the prompt
 const gscPromptList = GSC_FACTORS.map(factor => `- ${factor.name} (${factor.id}): ${factor.description}`).join('\n  ');
+const weightsString = `EI: ${SIMPLE_WEIGHTS.ei}, EO: ${SIMPLE_WEIGHTS.eo}, EQ: ${SIMPLE_WEIGHTS.eq}, ILF: ${SIMPLE_WEIGHTS.ilf}, EIF: ${SIMPLE_WEIGHTS.eif}`;
 
 const prompt = ai.definePrompt({
   name: 'analyzeDocumentPrompt',
@@ -64,16 +69,24 @@ const prompt = ai.definePrompt({
   output: {schema: AnalyzeDocumentOutputSchema},
   prompt: `You are an expert software analyst skilled at Function Point Analysis and evaluating system characteristics.
 
-Analyze the provided document for two main purposes:
+Analyze the provided document for three main purposes:
 1. Identify potential Function Point components: External Inputs (EI), External Outputs (EO), External Inquiries (EQ), Internal Logical Files (ILF), and External Interface Files (EIF).
    For each identified Function Point type:
      a. Provide a concise textual description summarizing what was identified.
-     b. Provide an estimated numerical count of how many distinct items of that type you identified. If you cannot reasonably determine a count from the document, you may omit the 'count' field or set it to null for that specific component.
+     b. Provide an estimated numerical count of how many distinct items of that type you identified. If you cannot reasonably determine a count, set it to null.
 
-2. Estimate ratings for General System Characteristics (GSCs). For each GSC listed below, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating for a GSC from the document, you may omit that GSC's field or set its value to null in the output.
-
+2. Estimate ratings for General System Characteristics (GSCs). For each GSC listed below, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating, set it to null.
    General System Characteristics to evaluate:
   ${gscPromptList}
+
+3. After determining the FP component counts and GSC ratings, provide an overall AI-estimated calculation for Unadjusted Function Points (UFP), Value Adjustment Factor (VAF), and Adjusted Function Points (AFP).
+   - To estimate UFP, use the component counts you derived and the following simplified average weights: ${weightsString}.
+     Formula: UFP = (EI_count × ${SIMPLE_WEIGHTS.ei}) + (EO_count × ${SIMPLE_WEIGHTS.eo}) + (EQ_count × ${SIMPLE_WEIGHTS.eq}) + (ILF_count × ${SIMPLE_WEIGHTS.ilf}) + (EIF_count × ${SIMPLE_WEIGHTS.eif}).
+   - To estimate VAF, use the GSC ratings you derived. Let TDI be the sum of all 14 GSC ratings.
+     Formula: VAF = 0.65 + (0.01 × TDI). The VAF should be between 0.65 and 1.35.
+   - To estimate AFP, use your estimated UFP and VAF.
+     Formula: AFP = UFP × VAF.
+   Provide these as 'estimatedUfp', 'estimatedVaf', and 'estimatedAfp' in the output. If any component count or GSC rating needed for these estimations is null, then the corresponding estimated UFP/VAF/AFP should also be null.
 
 Document: {{media url=documentDataUri}}
 
@@ -87,23 +100,15 @@ Provide your analysis in the following JSON format:
     "EIF": { "description": "...", "count": null }
   },
   "gscRatings": {
-    "dataCommunications": null, // Example: 3 if determinable
-    "distributedDataProcessing": null,
-    "performance": null,
-    "heavilyUsedConfiguration": null,
-    "transactionRate": null,
-    "onlineDataEntry": null,
-    "endUserEfficiency": null,
-    "onlineUpdate": null,
-    "complexProcessing": null,
-    "reusability": null,
-    "installationEase": null,
-    "operationalEase": null,
-    "multipleSites": null,
+    "dataCommunications": null,
+    // ... (all other GSC factors)
     "facilitateChange": null
-  }
+  },
+  "estimatedUfp": null,
+  "estimatedVaf": null,
+  "estimatedAfp": null
 }
-Ensure all fields exist in the output, using null if a value cannot be determined. For GSC ratings, provide an integer between 0 and 5, or null. For FP counts, provide an integer or null.`,
+Ensure all fields exist in the output, using null if a value cannot be determined. For GSC ratings, provide an integer between 0 and 5, or null. For FP counts, provide an integer or null. For estimated UFP/VAF/AFP, provide a number or null.`,
 });
 
 const analyzeDocumentFlow = ai.defineFlow(
@@ -114,9 +119,6 @@ const analyzeDocumentFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    // Basic validation/ensure structure - AI might sometimes omit optional fields entirely.
-    // For a more robust solution, one might merge with a default structure.
-    // For now, trust the prompt and output schema guide the AI.
     return output!;
   }
 );
