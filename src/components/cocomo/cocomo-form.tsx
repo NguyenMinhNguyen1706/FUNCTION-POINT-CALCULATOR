@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -25,7 +26,12 @@ const scaleFactorSchemaShape = COCOMO_SCALE_FACTORS.reduce((acc, factor) => {
 
 
 const formSchema = z.object({
-  ksloc: z.coerce.number().positive("KSLOC must be positive").default(10),
+  ksloc: z.coerce
+    .number({ 
+      required_error: "KSLOC is required.",
+      invalid_type_error: "KSLOC must be a number." 
+    })
+    .positive("KSLOC must be a positive number."),
   ...scaleFactorSchemaShape,
 });
 
@@ -39,9 +45,10 @@ export function CocomoForm() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ksloc: 10,
-      ...COCOMO_SCALE_FACTORS.reduce((acc, factor) => ({ ...acc, [factor.id]: factor.values[2] }), {}), // Default to Nominal
+      ksloc: undefined, // Changed from 10 to undefined to be empty by default
+      ...COCOMO_SCALE_FACTORS.reduce((acc, factor) => ({ ...acc, [factor.id]: factor.values[2] }), {}), // Default to Nominal for scale factors
     },
+    mode: "onChange", // Added for more immediate validation feedback
   });
 
   const onSubmit = (data: FormData) => {
@@ -87,7 +94,13 @@ export function CocomoForm() {
                   <FormItem>
                     <FormLabel>KSLOC (Kilo Source Lines of Code)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g., 50" {...field} />
+                      <Input 
+                        type="number" 
+                        placeholder="e.g., 50" 
+                        {...field} 
+                        onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} // Ensure undefined for empty
+                        value={field.value === undefined ? '' : field.value} // Ensure input is empty if value is undefined
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,3 +196,4 @@ export function CocomoForm() {
     </Form>
   );
 }
+
