@@ -27,12 +27,11 @@ const MAX_FP_INPUT_VALUE = 99999;
 // Schema for a single Function Point component input field
 const fpSingleComponentSchema = z.coerce
   .number({
-    // This message will appear for non-numeric strings AND for empty strings (as "" coerces to NaN)
-    invalid_type_error: "Vui lòng chỉ nhập số.", 
+    invalid_type_error: "Please enter numbers only.", 
   })
-  .int("Chỉ được nhập số nguyên (0, 1, 2, 3…) thôi nhé.") // Ensures it's an integer, 0 is allowed
-  .min(0, "Không được nhập số âm vì số lượng không thể âm.") // Allows 0 and positive integers
-  .max(MAX_FP_INPUT_VALUE, "Số quá lớn, kiểm tra lại xem có nhầm không nhé!");
+  .int("Only whole numbers (0, 1, 2, 3...) are allowed.")
+  .min(0, "Negative numbers are not allowed. Counts cannot be negative.")
+  .max(MAX_FP_INPUT_VALUE, "Number is too large. Please check if there's a mistake.");
 
 // Schema for all Function Point component inputs
 const fpInputSchema = z.object({
@@ -59,7 +58,7 @@ const formSchema = fpInputSchema.extend(gscSchemaShape)
     }
     return true;
   }, {
-    message: "Không có dữ liệu nào để tính. Ít nhất một thành phần Function Point phải lớn hơn 0.",
+    message: "No data to calculate. At least one Function Point component must be greater than 0.",
     path: ["ei"], // Assign the error message to the 'ei' field for display
   });
 
@@ -77,11 +76,11 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: { // These initial 0s are valid and will be checked by the .refine if all are 0 on submit
+    defaultValues: { 
       ei: 0, eo: 0, eq: 0, ilf: 0, eif: 0,
       ...GSC_FACTORS.reduce((acc, factor) => ({ ...acc, [factor.id]: 0 }), {}),
     },
-    mode: "onChange", // Validate on change for quicker feedback
+    mode: "onChange", 
   });
 
   const fpFields: { name: keyof FPInputs; label: string; aiKey: keyof NonNullable<FpCalculatorFormProps['aiFpSuggestions']> }[] = [
@@ -100,13 +99,12 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         if (suggestion && suggestion.count !== undefined && suggestion.count !== null) {
           form.setValue(fieldData.name, suggestion.count, { shouldValidate: true });
         } else {
-          // If AI provides no count or null, set to 0 or clear, depending on desired behavior
           // form.setValue(fieldData.name, 0, { shouldValidate: true }); 
         }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiFpSuggestions, form.setValue]); // form.setValue added to deps
+  }, [aiFpSuggestions, form.setValue]); 
 
   useEffect(() => {
     if (aiGscSuggestions) {
@@ -118,7 +116,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         }
       });
     }
-  }, [aiGscSuggestions, form.setValue]); // form.setValue added to deps
+  }, [aiGscSuggestions, form.setValue]);
 
 
   const onSubmit = (data: FormData) => {
@@ -336,5 +334,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
   );
 }
 
+
+    
 
     
