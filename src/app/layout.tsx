@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { Roboto, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
-import { AppSidebarNav } from '@/components/layout/app-sidebar-nav';
-import { Toaster } from "@/components/ui/toaster";
+import { LayoutClientBoundary } from '@/components/layout/layout-client-boundary';
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -29,17 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${roboto.variable} ${geistMono.variable} font-sans antialiased`}>
-        <SidebarProvider defaultOpen>
-          <Sidebar collapsible="icon" className="shadow-md">
-            <AppSidebarNav />
-          </Sidebar>
-          <SidebarInset>
-            <main className="min-h-screen p-4 sm:p-6 lg:p-8">
-              {children}
-            </main>
-          </SidebarInset>
-        </SidebarProvider>
-        <Toaster />
+        <LayoutClientBoundary>{children}</LayoutClientBoundary>
       </body>
     </html>
   );
