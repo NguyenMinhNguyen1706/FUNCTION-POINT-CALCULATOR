@@ -334,7 +334,4 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
   );
 }
 
-
-    
-
     
