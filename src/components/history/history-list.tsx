@@ -390,18 +390,16 @@ export function HistoryList() {
                          {format(new Date(entry.timestamp), "PPp")}
                        </span>
                     </div>
-                     <Button
-                        asChild
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
-                        onClick={(e) => { e.stopPropagation(); }} 
-                        aria-label="Delete entry"
-                      >
+                     
                         <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <div className="p-1.5 inline-block cursor-pointer rounded-md" role="button" tabIndex={0} 
-                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') (e.currentTarget as HTMLDivElement).click(); }} >
+                          <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                             <div 
+                              className="p-3 inline-flex items-center justify-center cursor-pointer rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-shrink-0" 
+                              role="button" 
+                              tabIndex={0} 
+                              aria-label="Delete entry"
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); (e.currentTarget as HTMLDivElement).click();}}} 
+                             >
                                 <Trash2 className="h-4 w-4" />
                              </div>
                           </AlertDialogTrigger>
@@ -418,7 +416,6 @@ export function HistoryList() {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </Button>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 bg-muted/50 rounded-md">
