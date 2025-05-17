@@ -59,8 +59,6 @@ export async function analyzeDocument(input: AnalyzeDocumentInput): Promise<Anal
   return analyzeDocumentFlow(input);
 }
 
-// Create the GSC list string for the prompt
-const gscPromptList = GSC_FACTORS.map(factor => `- ${factor.name} (${factor.id}): ${factor.description}`).join('\n  ');
 const weightsString = `EI: ${SIMPLE_WEIGHTS.ei}, EO: ${SIMPLE_WEIGHTS.eo}, EQ: ${SIMPLE_WEIGHTS.eq}, ILF: ${SIMPLE_WEIGHTS.ilf}, EIF: ${SIMPLE_WEIGHTS.eif}`;
 
 const prompt = ai.definePrompt({
@@ -75,9 +73,7 @@ Analyze the provided document for three main purposes:
      a. Provide a concise textual description summarizing what was identified.
      b. Provide an estimated numerical count (integer) of how many distinct items of that type you identified. If you cannot reasonably determine a count, set it to null.
 
-2. Estimate ratings for General System Characteristics (GSCs). For each GSC listed below, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating, set it to null.
-   General System Characteristics to evaluate:
-  ${gscPromptList}
+2. Estimate ratings for General System Characteristics (GSCs) as defined in the 'gscRatings' section of the output schema. For each characteristic, provide an estimated rating from 0 (Not Present or Not Applicable) to 5 (Strongly Present and Influential) based on the information in the document. The rating should be an integer. If you cannot reasonably determine a rating for a specific GSC, set its value to null.
 
 3. After determining the FP component counts and GSC ratings, provide an overall AI-estimated calculation for Unadjusted Function Points (UFP), Value Adjustment Factor (VAF), and Adjusted Function Points (AFP).
    - To estimate UFP, use the component counts you derived and the following simplified average weights: ${weightsString}.
