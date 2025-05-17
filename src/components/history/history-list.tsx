@@ -4,8 +4,6 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
 import type { HistoryEntry, FPCalculationResult, CocomoCalculationResult } from '@/lib/types';
-// AnalyzeDocumentOutput is no longer directly stored in history, so its import might not be needed here
-// GSC_FACTORS is still needed for rendering GSC details within FP results
 import { GSC_FACTORS, GSCFactorId } from '@/lib/constants'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,10 +26,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from '../ui/separator';
 
-const IconMap = {
+const IconMap: Record<string, React.ElementType> = { // Added explicit type for IconMap
   FP: FunctionSquare,
   COCOMO: Calculator,
-  // ANALYSIS: FileText, // Removed
 };
 
 interface ActualsInputState {
@@ -133,7 +130,8 @@ export function HistoryList() {
   };
   
   const handleExportToCSV = () => {
-    if (history.length === 0) {
+    const filteredHistory = history.filter(entry => entry.type === 'FP' || entry.type === 'COCOMO');
+    if (filteredHistory.length === 0) {
       toast({ title: "No History", description: "There is no data to export.", variant: "destructive" });
       return;
     }
@@ -146,12 +144,11 @@ export function HistoryList() {
       'Effort Actual PM (COCOMO)', 'Dev Time Actual M (COCOMO)',
     ];
     
-    // GSC headers
     const gscHeaders = GSC_FACTORS.map(gsc => `GSC: ${gsc.name}`);
     const headers = [...baseHeaders, ...gscHeaders];
     const csvRows = [headers.join(',')];
 
-    history.forEach(entry => {
+    filteredHistory.forEach(entry => {
       const row: (string | number | null | undefined)[] = [
         entry.id,
         format(new Date(entry.timestamp), "yyyy-MM-dd HH:mm:ss"),
@@ -161,13 +158,12 @@ export function HistoryList() {
       if (entry.type === 'FP') {
         const fpData = entry.data as FPCalculationResult;
         row.push(
-          fpData.fileName ?? '', // Source File Name
-          '', // KSLOC
+          fpData.fileName ?? '', 
+          '', 
           fpData.inputs.ei, fpData.inputs.eo, fpData.inputs.eq, fpData.inputs.ilf, fpData.inputs.eif,
           fpData.ufp, fpData.vaf, fpData.afp, fpData.actualAfp,
-          '', '', '', '', // COCOMO fields
+          '', '', '', '', 
         );
-        // Add GSC values for FP type
         GSC_FACTORS.forEach(gsc => {
             row.push(fpData.gsc[gsc.id as GSCFactorId] ?? '');
         });
@@ -175,14 +171,13 @@ export function HistoryList() {
       } else if (entry.type === 'COCOMO') {
         const cocomoData = entry.data as CocomoCalculationResult;
         row.push(
-          '', // Source File Name
+          '', 
           cocomoData.inputs.ksloc,
-          '', '', '', '', '', // FP input fields
-          '', '', '', '', // FP result fields
+          '', '', '', '', '', 
+          '', '', '', '', 
           cocomoData.effort, cocomoData.devTime,
           cocomoData.actualEffort, cocomoData.actualDevTime,
         );
-        // Add empty GSC values for COCOMO type
         GSC_FACTORS.forEach(() => row.push(''));
       }
       csvRows.push(row.map(escapeCsvCell).join(','));
@@ -210,8 +205,10 @@ export function HistoryList() {
   if (!isClient) {
     return <p>Loading history...</p>;
   }
+  
+  const displayHistory = history.filter(entry => entry.type === 'FP' || entry.type === 'COCOMO');
 
-  if (history.length === 0) {
+  if (displayHistory.length === 0) {
     return (
       <div className="text-center py-10">
         <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -296,17 +293,15 @@ export function HistoryList() {
     </div>
   );
 
-  // renderAnalysisDetails is removed
-
   return (
     <div className="space-y-4">
        <div className="flex justify-between items-center">
-        <Button variant="outline" size="sm" onClick={handleExportToCSV} disabled={history.length === 0}>
+        <Button variant="outline" size="sm" onClick={handleExportToCSV} disabled={displayHistory.length === 0}>
           <FileDown className="mr-2 h-4 w-4" /> Export to CSV
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={history.length === 0}>
+            <Button variant="destructive" size="sm" disabled={displayHistory.length === 0}>
               <Trash2 className="mr-2 h-4 w-4" /> Clear All History
             </Button>
           </AlertDialogTrigger>
@@ -326,11 +321,11 @@ export function HistoryList() {
       </div>
       <ScrollArea className="h-[calc(100vh-20rem)] pr-3">
         <Accordion type="multiple" className="w-full">
-          {history.sort((a,b) => b.timestamp - a.timestamp).map(entry => { 
+          {displayHistory.sort((a,b) => b.timestamp - a.timestamp).map(entry => { 
             const ItemIcon = IconMap[entry.type];
             let titleText = `${entry.type} Calculation`;
-            if (entry.type === 'FP' && entry.data.fileName) {
-                titleText = `FP Calc (from ${entry.data.fileName})`;
+            if (entry.type === 'FP' && (entry.data as FPCalculationResult).fileName) { // Type assertion for safety
+                titleText = `FP Calc (from ${(entry.data as FPCalculationResult).fileName})`;
             }
 
             return (
@@ -338,7 +333,7 @@ export function HistoryList() {
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-2">
                     <div className="flex items-center gap-3">
-                       <ItemIcon className="h-5 w-5 text-primary" />
+                       {ItemIcon && <ItemIcon className="h-5 w-5 text-primary" />}
                        <span className="font-medium text-sm sm:text-base truncate max-w-[200px] sm:max-w-xs md:max-w-md">
                         {titleText}
                        </span>
@@ -377,7 +372,6 @@ export function HistoryList() {
                 <AccordionContent className="p-4 bg-muted/50 rounded-md">
                   {entry.type === 'FP' && renderFPDetails(entry as HistoryEntry & { type: 'FP'; data: FPCalculationResult })}
                   {entry.type === 'COCOMO' && renderCocomoDetails(entry as HistoryEntry & { type: 'COCOMO'; data: CocomoCalculationResult })}
-                  {/* Removed entry.type === 'ANALYSIS' block */}
                 </AccordionContent>
               </AccordionItem>
             )
@@ -387,3 +381,4 @@ export function HistoryList() {
     </div>
   );
 }
+
