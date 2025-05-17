@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,12 +20,11 @@ import { FpChart } from './fp-chart';
 import { useToast } from '@/hooks/use-toast';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
+import { Form, FormControl, FormDescription as UiFormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; 
 import { HelpCircle } from 'lucide-react';
 
 const MAX_FP_INPUT_VALUE = 99999;
 
-// Schema for a single Function Point component input field
 const fpSingleComponentSchema = z.coerce
   .number({
     invalid_type_error: "Please enter numbers only.", 
@@ -33,7 +33,6 @@ const fpSingleComponentSchema = z.coerce
   .min(0, "Negative numbers are not allowed. Counts cannot be negative.")
   .max(MAX_FP_INPUT_VALUE, "Number is too large. Please check if there's a mistake.");
 
-// Schema for all Function Point component inputs
 const fpInputSchema = z.object({
   ei: fpSingleComponentSchema,
   eo: fpSingleComponentSchema,
@@ -49,27 +48,26 @@ const gscSchemaShape = GSC_FACTORS.reduce((acc, factor) => {
 
 const formSchema = fpInputSchema.extend(gscSchemaShape)
   .refine(data => {
-    // Form-level validation: Check if all FP inputs are 0
     const fpValues = [data.ei, data.eo, data.eq, data.ilf, data.eif];
     const allFpInputsAreZero = fpValues.every(val => val === 0);
     
     if (allFpInputsAreZero) {
-      return false; // Triggers the refinement error
+      return false; 
     }
     return true;
   }, {
     message: "No data to calculate. At least one Function Point component must be greater than 0.",
-    path: ["ei"], // Assign the error message to the 'ei' field for display
+    path: ["ei"], 
   });
 
 type FormData = z.infer<typeof formSchema>;
 
 interface FpCalculatorFormProps {
   aiFpSuggestions?: AnalyzeDocumentOutput['potentialFunctionPoints'] | null;
-  aiGscSuggestions?: AnalyzeDocumentOutput['gscRatings'] | null;
+  // aiGscSuggestions is removed as AI no longer provides GSC ratings directly
 }
 
-export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalculatorFormProps) {
+export function FpCalculatorForm({ aiFpSuggestions }: FpCalculatorFormProps) {
   const [result, setResult] = useState<FPCalculationResult | null>(null);
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>('calculationHistory', []);
   const { toast } = useToast();
@@ -98,26 +96,13 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
         const suggestion = aiFpSuggestions[fieldData.aiKey];
         if (suggestion && suggestion.count !== undefined && suggestion.count !== null) {
           form.setValue(fieldData.name, suggestion.count, { shouldValidate: true });
-        } else {
-          // form.setValue(fieldData.name, 0, { shouldValidate: true }); 
         }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiFpSuggestions, form.setValue]); 
 
-  useEffect(() => {
-    if (aiGscSuggestions) {
-      setResult(null);
-      GSC_FACTORS.forEach(factor => {
-        const suggestedRating = aiGscSuggestions[factor.id as GSCFactorId];
-        if (suggestedRating !== undefined && suggestedRating !== null) {
-          form.setValue(factor.id as GSCFactorId, suggestedRating, { shouldValidate: true });
-        }
-      });
-    }
-  }, [aiGscSuggestions, form.setValue]);
-
+  // Removed useEffect for aiGscSuggestions as it's no longer a prop or provided by AI
 
   const onSubmit = (data: FormData) => {
     const fpInputs: FPInputs = {
@@ -170,12 +155,12 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                       <DialogTitle>Function Point (FP) Calculation Overview</DialogTitle>
                     </DialogHeader>
                     <ScrollArea className="max-h-[60vh] pr-2">
-                      <div className="py-2 space-y-3 text-sm break-words">
+                       <div className="py-2 space-y-3 text-sm break-words">
                         <p>FP is computed in two steps:</p>
                         <div>
                           <p className="font-semibold">1. Calculating Unadjusted Function Point Count (UFC).</p>
                           <p className="pl-4">
-                            UFC is the sum of each function point type (NEI, NEO, NEQ, NEIF, NILF) multiplied by its weight. This application uses simplified average weights:
+                            UFC is the sum of each function point type multiplied by its simplified average weight:
                           </p>
                           <ul className="list-disc pl-8 text-xs">
                             <li>External Inputs (EI): {SIMPLE_WEIGHTS.ei}</li>
@@ -194,7 +179,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
                             VAF is derived from the sum of ratings (∑Fi) of the 14 General System Characteristics (GSCs), also known as Value Adjustment Factors. Each factor (Fj) is rated from 0 (not present) to 5 (strong influence).
                           </p>
                           <p className="pl-4 mt-1">
-                            <code className="font-mono text-xs bg-muted p-1 rounded">Total Degree of Influence (TDI) = ∑Fi</code>
+                            <code className="font-mono text-xs bg-muted p-1 rounded">Total Degree of Influence (TDI) = ∑Fi (Sum of ratings for all 14 GSCs)</code>
                           </p>
                            <p className="pl-4 mt-1">
                             <code className="font-mono text-xs bg-muted p-1 rounded">VAF = 0.65 + (0.01 × TDI)</code>
@@ -248,7 +233,7 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
           <Card>
             <CardHeader>
               <CardTitle>Value Adjustment Factors (VAF)</CardTitle>
-              <CardDescription>Rate each characteristic from 0 (Not Present) to 5 (Strongly Present). AI suggestions may pre-fill these.</CardDescription>
+              <CardDescription>Rate each characteristic from 0 (Not Present) to 5 (Strongly Present).</CardDescription>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[350px] pr-4">
@@ -333,5 +318,3 @@ export function FpCalculatorForm({ aiFpSuggestions, aiGscSuggestions }: FpCalcul
     </Form>
   );
 }
-
-    

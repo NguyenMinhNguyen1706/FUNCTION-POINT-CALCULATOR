@@ -178,21 +178,19 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
           <CardHeader>
             <CardTitle>Analysis Results for: <span className="text-primary">{fileName}</span></CardTitle>
             <CardDescription>
-              The AI has identified potential Function Point components, estimated their counts, suggested GSC ratings, and provided an overall FP estimate.
+              The AI has identified potential Function Point components, estimated their counts, and provided an overall UFP estimate.
               These suggestions can guide your input in the form above and some fields may have been pre-filled. Review carefully.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-                <h4 className="font-semibold text-lg text-foreground mb-2">AI's Overall FP Estimation:</h4>
-                {analysisResult.estimatedAfp !== null && analysisResult.estimatedAfp !== undefined ? (
+                <h4 className="font-semibold text-lg text-foreground mb-2">AI's Overall UFP Estimation:</h4>
+                {analysisResult.estimatedUfp !== null && analysisResult.estimatedUfp !== undefined ? (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
-                        <p><span className="font-medium">Est. UFP:</span> {analysisResult.estimatedUfp?.toFixed(2) ?? 'N/A'}</p>
-                        <p><span className="font-medium">Est. VAF:</span> {analysisResult.estimatedVaf?.toFixed(2) ?? 'N/A'}</p>
-                        <p className="font-semibold text-primary"><span className="font-medium">Est. AFP:</span> {analysisResult.estimatedAfp?.toFixed(2) ?? 'N/A'}</p>
+                        <p className="font-semibold text-primary"><span className="font-medium">Est. UFP:</span> {analysisResult.estimatedUfp?.toFixed(2) ?? 'N/A'}</p>
                     </div>
                 ) : (
-                    <p className="text-sm text-muted-foreground mb-4">AI did not provide an overall FP estimate.</p>
+                    <p className="text-sm text-muted-foreground mb-4">AI did not provide an overall UFP estimate.</p>
                 )}
             </div>
 
@@ -209,22 +207,6 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
                 </div>
                 ))}
             </div>
-            
-             {analysisResult.gscRatings && Object.keys(analysisResult.gscRatings).length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-semibold text-lg text-foreground mb-1">Suggested GSC Ratings:</h4>
-                 {Object.entries(analysisResult.gscRatings)
-                  .filter(([_, value]) => value !== null && value !== undefined)
-                  .map(([key, value]) => (
-                  <p key={key} className="text-sm text-muted-foreground">
-                    <span className="font-medium">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:</span> {value}
-                  </p>
-                ))}
-                {Object.values(analysisResult.gscRatings).every(v => v === null || v === undefined) && (
-                    <p className="text-sm text-muted-foreground">AI did not provide GSC ratings.</p>
-                )}
-              </div>
-            )}
           </CardContent>
           <CardFooter>
             <Button onClick={handleSaveToHistory} variant="outline">Save to History</Button>
@@ -234,4 +216,3 @@ export function FileUploadForm({ onAnalysisComplete }: FileUploadFormProps) {
     </Form>
   );
 }
-
